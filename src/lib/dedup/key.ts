@@ -7,15 +7,15 @@ export function normalizeDomain(uri: string | null | undefined): string {
     return uri.toLowerCase();
   }
 
-  let parsed: URL;
   try {
-    parsed = new URL(uri);
+    return new URL(uri).hostname.toLowerCase();
   } catch {
-    return uri.toLowerCase();
+    try {
+      return new URL(`http://${uri}`).hostname.toLowerCase();
+    } catch {
+      return uri.toLowerCase();
+    }
   }
-
-  const hostname = parsed.hostname.toLowerCase();
-  return hostname;
 }
 
 export function stripWww(hostname: string): string {
@@ -42,6 +42,9 @@ export function dedupKey(
     readonly caseInsensitiveUsernames: boolean;
   },
 ): string {
+  // Exact-host matching by design: different subdomains often host different
+  // services with separate credentials (mail.google.com vs accounts.google.com).
+  // registrableDomain is exported for callers that want eTLD+1 grouping elsewhere.
   let domain = normalizeDomain(uri);
 
   if (options.treatWwwAsSameDomain) {
