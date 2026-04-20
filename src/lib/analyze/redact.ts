@@ -21,7 +21,8 @@ export function maskPassword(
   password: string | null | undefined,
   maskChar: string = MASKED_DEFAULT,
 ): string {
-  if (!password) return '';
+  if (password === null || password === undefined) return '';
+  if (password === '') return '<empty>';
   return maskChar.repeat(Math.min(password.length, 20));
 }
 

@@ -54,8 +54,8 @@ describe('maskPassword', () => {
     assert.equal(maskPassword(undefined), '');
   });
 
-  it('returns empty string for empty password', () => {
-    assert.equal(maskPassword(''), '');
+  it('returns <empty> sentinel for explicitly empty password', () => {
+    assert.equal(maskPassword(''), '<empty>');
   });
 
   it('never contains original password text', () => {
