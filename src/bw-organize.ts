@@ -44,7 +44,7 @@ async function main(): Promise<void> {
     });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`seiton: ${detail}\nRun 'seiton --help' for usage.\n`);
+    process.stderr.write(`seiton: invalid arguments: ${detail}\nRun 'seiton --help' for usage.\n`);
     process.exit(ExitCode.USAGE);
   }
 

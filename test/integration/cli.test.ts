@@ -9,7 +9,6 @@ const execFileAsync = promisify(execFile);
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ENTRY = join(ROOT, 'src', 'bw-organize.ts');
-const ERROR_FIXTURE = join(ROOT, 'test', 'integration', 'fixtures', 'cli-parseargs-error.ts');
 
 interface RunResult {
   stdout: string;
@@ -89,24 +88,15 @@ describe('CLI entry point', () => {
   });
 
   describe('invalid-argument error path', () => {
-    // With strict: false in parseArgs, the catch block in bw-organize.ts is
-    // unreachable from normal CLI input. This test exercises a fixture that
-    // replays the exact error-path logic (stderr message + ExitCode.USAGE)
-    // to verify the contract: exit 64 with a helpful stderr message.
-    it('error fixture exits 64 and writes guidance to stderr', async () => {
-      try {
-        await execFileAsync(
-          process.execPath,
-          ['--import', 'tsx', ERROR_FIXTURE],
-          { cwd: ROOT, env: { ...process.env, NODE_NO_WARNINGS: '1' } },
-        );
-        assert.fail('Expected process to exit with non-zero code');
-      } catch (err: unknown) {
-        const e = err as { stdout: string; stderr: string; code: number };
-        assert.equal(e.code, 64, 'ExitCode.USAGE should be 64');
-        assert.ok(e.stderr.includes('invalid arguments'));
-        assert.ok(e.stderr.includes('--help'));
-      }
+    // parseArgs uses strict: true, so unknown flags throw and the catch block
+    // in bw-organize.ts writes "invalid arguments: ..." to stderr and exits
+    // with ExitCode.USAGE (64). Passing an unknown flag directly exercises
+    // this path without a fixture indirection.
+    it('unknown flag exits 64 and writes guidance to stderr', async () => {
+      const { stderr, exitCode } = await runCli(['--unknown-flag']);
+      assert.equal(exitCode, 64, 'ExitCode.USAGE should be 64');
+      assert.ok(stderr.includes('invalid arguments'));
+      assert.ok(stderr.includes('--help'));
     });
   });
 });
