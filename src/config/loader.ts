@@ -28,18 +28,27 @@ async function loadConfigFile(opts: LoadConfigOptions): Promise<Record<string, u
     try {
       raw = await readFile(candidate.path, 'utf-8');
     } catch (err: unknown) {
-      if (candidate.hardFail) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new ConfigError('CONFIG_NOT_FOUND', `Config file not found at ${candidate.path} (via ${candidate.source}): ${msg}`);
+      const code = (err as { code?: string } | null)?.code;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (code === 'ENOENT') {
+        if (candidate.hardFail) {
+          throw new ConfigError('CONFIG_NOT_FOUND', `Config file not found at ${candidate.path} (via ${candidate.source}): ${msg}`);
+        }
+        continue;
       }
-      continue;
+      throw new ConfigError('CONFIG_READ_ERROR', `Failed to read config at ${candidate.path} (via ${candidate.source}): ${msg}`);
     }
 
+    let parsed: unknown;
     try {
-      return JSON.parse(raw) as Record<string, unknown>;
+      parsed = JSON.parse(raw);
     } catch {
       throw new ConfigError('CONFIG_PARSE_ERROR', `Failed to parse config at ${candidate.path}: invalid JSON`);
     }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new ConfigError('CONFIG_VALIDATION', `Config at ${candidate.path} must be a JSON object, got ${Array.isArray(parsed) ? 'array' : parsed === null ? 'null' : typeof parsed}`);
+    }
+    return parsed as Record<string, unknown>;
   }
 
   return { version: 1 };
@@ -124,9 +133,9 @@ export function validateConfig(raw: Record<string, unknown>): Config {
 }
 
 function formatZodIssue(issue: z.ZodIssue): string {
-  const path = issue.path.join('.');
+  const path = issue.path.length ? issue.path.join('.') : '(root)';
   if (issue.code === 'unrecognized_keys') {
     return `  - ${path}: unknown key(s): ${issue.keys.join(', ')}`;
   }
-  return `  - ${path || '(root)'}: ${issue.message}`;
+  return `  - ${path}: ${issue.message}`;
 }

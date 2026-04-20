@@ -40,11 +40,21 @@ export function configDiscoveryStack(opts: ConfigPathOptions = {}): readonly Con
   }
 
   const configHome = resolveConfigHome();
-  candidates.push(
-    { path: join(configHome, 'seiton', 'config.json'), hardFail: false, source: '$XDG_CONFIG_HOME' },
-    { path: join(expandTilde(home), '.config', 'seiton', 'config.json'), hardFail: false, source: '$HOME/.config' },
-    { path: join(expandTilde(home), '.seitonrc.json'), hardFail: false, source: '$HOME/.seitonrc.json' },
-  );
+  const xdgIsSet = process.env['XDG_CONFIG_HOME'] !== undefined && process.env['XDG_CONFIG_HOME'] !== '';
+  const xdgCandidatePath = join(configHome, 'seiton', 'config.json');
+  const homeConfigPath = join(expandTilde(home), '.config', 'seiton', 'config.json');
+
+  candidates.push({
+    path: xdgCandidatePath,
+    hardFail: false,
+    source: xdgIsSet ? '$XDG_CONFIG_HOME' : '$HOME/.config',
+  });
+
+  if (xdgCandidatePath !== homeConfigPath) {
+    candidates.push({ path: homeConfigPath, hardFail: false, source: '$HOME/.config' });
+  }
+
+  candidates.push({ path: join(expandTilde(home), '.seitonrc.json'), hardFail: false, source: '$HOME/.seitonrc.json' });
 
   return candidates;
 }

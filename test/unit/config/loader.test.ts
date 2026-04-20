@@ -7,9 +7,21 @@ import { loadConfig, applyEnvOverrides, validateConfig, ConfigError } from '../.
 
 describe('loadConfig', () => {
   let tmp: string;
+  const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(async () => {
     tmp = await mkdtemp(join(tmpdir(), 'seiton-test-'));
+    savedEnv['HOME'] = process.env['HOME'];
+    savedEnv['XDG_CONFIG_HOME'] = process.env['XDG_CONFIG_HOME'];
+    process.env['HOME'] = tmp;
+    delete process.env['XDG_CONFIG_HOME'];
+  });
+
+  afterEach(() => {
+    if (savedEnv['HOME'] === undefined) delete process.env['HOME'];
+    else process.env['HOME'] = savedEnv['HOME'];
+    if (savedEnv['XDG_CONFIG_HOME'] === undefined) delete process.env['XDG_CONFIG_HOME'];
+    else process.env['XDG_CONFIG_HOME'] = savedEnv['XDG_CONFIG_HOME'];
   });
 
   it('returns defaults when no config file exists', async () => {

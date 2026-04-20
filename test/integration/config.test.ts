@@ -18,16 +18,25 @@ interface RunResult {
   exitCode: number;
 }
 
+const CONFIG_ENV_VARS_TO_SANITIZE = ['SEITON_CONFIG', 'XDG_CONFIG_HOME'] as const;
+
 async function runCli(
   args: string[] = [],
   env: Record<string, string> = {},
 ): Promise<RunResult> {
-  const mergedEnv = { ...process.env, NODE_NO_WARNINGS: '1', ...env };
+  const mergedEnv: Record<string, string | undefined> = {
+    ...process.env,
+    NODE_NO_WARNINGS: '1',
+    ...env,
+  };
+  for (const key of CONFIG_ENV_VARS_TO_SANITIZE) {
+    if (!(key in env)) delete mergedEnv[key];
+  }
   try {
     const { stdout, stderr } = await execFileAsync(
       process.execPath,
       ['--import', 'tsx', ENTRY, ...args],
-      { cwd: ROOT, env: mergedEnv },
+      { cwd: ROOT, env: mergedEnv as NodeJS.ProcessEnv },
     );
     return { stdout, stderr, exitCode: 0 };
   } catch (err: unknown) {

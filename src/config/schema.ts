@@ -3,7 +3,7 @@ import { z } from 'zod';
 const CustomRuleSchema = z.object({
   folder: z.string().min(1),
   keywords: z.array(z.string().min(1)).min(1),
-});
+}).strict();
 
 const CoreSchema = z.object({
   output_format: z.enum(['text', 'json']).default('text'),
