@@ -9,6 +9,13 @@ export const ItemType = {
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
 
+export const ItemTypeSchema = z.union([
+  z.literal(ItemType.LOGIN),
+  z.literal(ItemType.SECURE_NOTE),
+  z.literal(ItemType.CARD),
+  z.literal(ItemType.IDENTITY),
+]);
+
 export const BwLoginUriSchema = z.object({
   match: z.number().nullable(),
   uri: z.string().nullable(),
@@ -30,7 +37,7 @@ export const BwItemSchema = z.object({
   id: z.string(),
   organizationId: z.string().nullable(),
   folderId: z.string().nullable(),
-  type: z.number().int(),
+  type: ItemTypeSchema,
   name: z.string(),
   notes: z.string().nullable(),
   favorite: z.boolean(),

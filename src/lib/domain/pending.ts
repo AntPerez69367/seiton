@@ -29,21 +29,23 @@ export type CreateFolderOp = {
 
 export type PendingOp = DeleteItemOp | AssignFolderOp | CreateFolderOp;
 
+const ISO_8601_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
 const DeleteItemOpSchema = z.object({
   kind: z.literal('delete_item'),
-  itemId: z.string(),
+  itemId: z.string().min(1),
 });
 
 const AssignFolderOpSchema = z.object({
   kind: z.literal('assign_folder'),
-  itemId: z.string(),
-  folderId: z.string().nullable(),
-  folderName: z.string(),
+  itemId: z.string().min(1),
+  folderId: z.string().min(1).nullable(),
+  folderName: z.string().min(1),
 });
 
 const CreateFolderOpSchema = z.object({
   kind: z.literal('create_folder'),
-  folderName: z.string(),
+  folderName: z.string().min(1),
 });
 
 const PendingOpSchema = z.discriminatedUnion('kind', [
@@ -55,7 +57,10 @@ const PendingOpSchema = z.discriminatedUnion('kind', [
 export const PendingQueueSchema = z.object({
   version: z.literal(PENDING_SCHEMA_VERSION),
   items: z.array(PendingOpSchema),
-  savedAt: z.string(),
+  savedAt: z.string().refine(
+    (s) => ISO_8601_REGEX.test(s) && !Number.isNaN(Date.parse(s)),
+    { message: 'savedAt must be an ISO 8601 datetime (e.g. YYYY-MM-DDTHH:MM:SS[.sss]Z)' },
+  ),
 });
 
 export type PendingQueue = z.infer<typeof PendingQueueSchema>;
