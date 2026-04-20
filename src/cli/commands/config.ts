@@ -3,7 +3,7 @@ import { redactConfig } from '../../config/schema.js';
 import { ExitCode } from '../../exit-codes.js';
 import type { Logger } from '../../adapters/logging.js';
 
-export async function configShow(cliConfigPath?: string, logger?: Logger): Promise<void> {
+export async function configShow(cliConfigPath?: string, logger?: Logger, _dryRun?: boolean): Promise<void> {
   logger?.info('config show command started');
   try {
     const config = await loadConfig({

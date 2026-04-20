@@ -7,6 +7,7 @@ import { configShow } from './cli/commands/config.js';
 import { runDoctor } from './cli/commands/doctor.js';
 import { createLogger, createNoopLogger } from './adapters/logging.js';
 import { createSystemClock } from './adapters/clock.js';
+import { installSignalHandlers } from './core/signals.js';
 
 const HELP_TEXT = `seiton v${VERSION} — interactive Bitwarden vault auditor
 
@@ -22,6 +23,7 @@ Commands:
 
 Global Flags:
   --config <path>   Override the config file location
+  --dry-run         Print planned actions without performing them
   --no-color        Disable ANSI color output
   --verbose, -v     Increase log detail (-vv for trace)
   --quiet, -q       Suppress non-essential output
@@ -50,6 +52,7 @@ async function main(): Promise<void> {
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'V' },
         config: { type: 'string' },
+        'dry-run': { type: 'boolean' },
         'no-color': { type: 'boolean' },
         verbose: { type: 'boolean', short: 'v', multiple: true },
         quiet: { type: 'boolean', short: 'q' },
@@ -83,13 +86,16 @@ async function main(): Promise<void> {
       })
     : createNoopLogger();
 
+  installSignalHandlers(log);
+
+  const dryRun = Boolean(args.values['dry-run']);
   const [positionalCommand, subcommand] = args.positionals;
 
-  log.info('seiton started', { command: positionalCommand, version: VERSION });
+  log.info('seiton started', { command: positionalCommand, version: VERSION, dryRun });
 
   if (positionalCommand === 'config' && subcommand === 'show') {
     log.debug('dispatching config show');
-    await configShow(args.values.config as string | undefined, log);
+    await configShow(args.values.config as string | undefined, log, dryRun);
     return;
   }
 

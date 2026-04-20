@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.6] - 2026-04-20
+
+### Added
+- **Journal system** (`src/core/journal-types.ts`, `src/core/journal.ts`): Versioned transaction log format (version 1) for multi-step mutations. Supports creating, reading, writing, and removing journal entries. Includes backup/restore of original files, rollback on failure, and recovery detection for interrupted runs. (M8)
 ## [0.2.5] - 2026-04-20
 
 ### Added
