@@ -426,7 +426,7 @@ describe('analyzeItems', () => {
       }
     });
 
-    it('does not group items with identical URIs in different order when compare_only_primary_uri is false', () => {
+    it('groups items with identical URIs in different order when compare_only_primary_uri is false', () => {
       const items = [
         makeItem({
           id: '1',
@@ -460,7 +460,7 @@ describe('analyzeItems', () => {
       });
       const findings = analyzeItems(items, config);
       const dupes = findings.filter((f) => f.category === 'duplicates');
-      assert.equal(dupes.length, 0, 'identical URIs in different order produce different keys when compare_only_primary_uri is false');
+      assert.equal(dupes.length, 1, 'identical URIs in different order match when compare_only_primary_uri is false');
     });
   });
 

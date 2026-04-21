@@ -55,13 +55,16 @@ function findDuplicates(
 ): Finding[] {
   const groups = new Map<string, BwItem[]>();
   for (const item of items) {
+    const uris = item.login?.uris ?? [];
     const uri = config.compare_only_primary_uri
-      ? item.login?.uris?.[0]?.uri
-      : item.login?.uris?.map((u) => u.uri).join(',');
-    const key = dedupKey(uri, item.login?.username, {
-      treatWwwAsSameDomain: config.treat_www_as_same_domain,
-      caseInsensitiveUsernames: config.case_insensitive_usernames,
-    });
+      ? uris[0]?.uri
+      : uris.map((u) => u.uri).filter(Boolean).sort().join(',');
+    const key = config.compare_only_primary_uri
+      ? dedupKey(uri, item.login?.username, {
+          treatWwwAsSameDomain: config.treat_www_as_same_domain,
+          caseInsensitiveUsernames: config.case_insensitive_usernames,
+        })
+      : `${(uri ?? '').toLowerCase()}:${config.case_insensitive_usernames ? (item.login?.username ?? '').toLowerCase() : (item.login?.username ?? '')}`;
     if (!key || key === ':') continue;
     const group = groups.get(key);
     if (group) group.push(item);
