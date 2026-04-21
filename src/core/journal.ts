@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import type { FsAdapter } from '../adapters/fs.js';
 import type { Clock } from '../adapters/clock.js';
 import type { Logger } from '../adapters/logging.js';
@@ -10,7 +11,6 @@ import {
   type JournalEntry,
   type JournalOperation,
 } from './journal-types.js';
-import { dirOf } from './fs-utils.js';
 
 export { JOURNAL_VERSION, JournalError, JournalErrorCode, parseJournal } from './journal-types.js';
 export type { JournalEntry, JournalOperation, JournalOpType, JournalStatus } from './journal-types.js';
@@ -53,7 +53,7 @@ export async function writeJournal(
   opts: JournalOptions,
 ): Promise<void> {
   opts.logger?.debug('journal: writing', { id: entry.id, status: entry.status });
-  await opts.fs.ensureDir(dirOf(opts.journalPath));
+  await opts.fs.ensureDir(dirname(opts.journalPath));
   await opts.fs.writeAtomic(opts.journalPath, JSON.stringify(entry, null, 2));
 }
 
@@ -112,7 +112,7 @@ export async function backupFile(
 
   await opts.fs.ensureDir(opts.backupDir);
   const backupName = `${journalId}-${opIndex}-backup`;
-  const backupPath = joinPath(opts.backupDir, backupName);
+  const backupPath = join(opts.backupDir, backupName);
   const content = await opts.fs.readText(filePath);
   await opts.fs.writeAtomic(backupPath, content);
   opts.logger?.debug('journal: backed up file', { from: filePath, to: backupPath });
@@ -127,7 +127,8 @@ export async function rollbackEntry(
   const updatedOps: JournalOperation[] = [];
 
   for (const op of entry.operations) {
-    if (op.status !== 'applied') {
+    const recordsBackup = op.status === 'applied' || (op.status === 'pending' && Boolean(op.backupPath));
+    if (!recordsBackup) {
       updatedOps.push({ ...op, status: 'rolled_back' });
       continue;
     }
@@ -193,14 +194,21 @@ export function markOpApplied(
   return updateOpStatus(entry, index, 'applied', backupPath);
 }
 
+export function setOpBackup(
+  entry: JournalEntry,
+  index: number,
+  backupPath: string,
+): JournalEntry {
+  const ops = entry.operations.map((op, i) =>
+    i === index ? { ...op, ...(backupPath ? { backupPath } : {}) } : op,
+  );
+  return { ...entry, operations: ops };
+}
+
 export function markComplete(entry: JournalEntry): JournalEntry {
   return { ...entry, status: 'committed' };
 }
 
 export function markFailed(entry: JournalEntry): JournalEntry {
   return { ...entry, status: 'failed' };
-}
-
-function joinPath(base: string, name: string): string {
-  return base.endsWith('/') ? `${base}${name}` : `${base}/${name}`;
 }

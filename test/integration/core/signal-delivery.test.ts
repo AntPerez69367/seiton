@@ -9,22 +9,28 @@ const CHILD_SCRIPT = join(import.meta.dirname, '..', '..', 'helpers', 'signal-te
 
 function spawnChild(markerPath: string): ReturnType<typeof spawn> {
   return spawn(process.execPath, ['--import', 'tsx/esm', CHILD_SCRIPT, markerPath], {
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'ignore'],
     env: { ...process.env },
   });
 }
 
 function waitForReady(child: ReturnType<typeof spawn>): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Child did not become ready')), 5000);
-    child.stdout!.on('data', (data: Buffer) => {
+    const timeout = setTimeout(() => {
+      child.stdout!.off('data', onData);
+      reject(new Error('Child did not become ready'));
+    }, 5000);
+    const onData = (data: Buffer) => {
       if (data.toString().includes('READY')) {
         clearTimeout(timeout);
+        child.stdout!.off('data', onData);
         resolve();
       }
-    });
+    };
+    child.stdout!.on('data', onData);
     child.on('error', (err) => {
       clearTimeout(timeout);
+      child.stdout!.off('data', onData);
       reject(err);
     });
   });

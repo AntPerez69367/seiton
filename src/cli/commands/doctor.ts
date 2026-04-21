@@ -1,11 +1,10 @@
 import { parseArgs } from 'node:util';
-import { loadConfig, ConfigError } from '../../config/loader.js';
+import { loadConfigWithPath, ConfigError } from '../../config/loader.js';
 import { ExitCode } from '../../exit-codes.js';
 import { getBwVersion } from '../../lib/bw.js';
 import { VERSION } from '../../version.js';
 import { createLogger, createNoopLogger, type Logger } from '../../adapters/logging.js';
 import { createSystemClock } from '../../adapters/clock.js';
-import { configDiscoveryStack } from '../../config/paths.js';
 
 const DOCTOR_HELP = `seiton doctor — preflight checks for bw, session, and config
 
@@ -13,7 +12,7 @@ Usage: seiton doctor [flags]
 
 Checks:
   • bw CLI is on PATH and reports its version
-  • BW_SESSION is set and the vault is unlocked
+  • BW_SESSION environment variable is set (unlock status is not probed)
   • Node.js version meets the minimum requirement (>=22)
   • Config file is valid (if present)
 
@@ -51,7 +50,7 @@ export async function doctor(opts: DoctorOptions = {}): Promise<void> {
   const results: CheckResult[] = [];
 
   results.push(checkNodeVersion());
-  results.push(await checkBwBinary());
+  results.push(await checkBwBinary(log));
   results.push(checkBwSession());
   results.push(await checkConfig(opts));
   results.push(checkVersion());
@@ -64,7 +63,7 @@ export async function doctor(opts: DoctorOptions = {}): Promise<void> {
   });
 
   const output = results.map(formatCheck).join('\n') + '\n';
-  process.stdout.write(output);
+  await writeAndDrain(process.stdout, output);
 
   if (hasFail) {
     log.debug('doctor exiting with failure');
@@ -72,6 +71,16 @@ export async function doctor(opts: DoctorOptions = {}): Promise<void> {
   }
   log.debug('doctor exiting with success');
   process.exit(ExitCode.SUCCESS);
+}
+
+function writeAndDrain(stream: NodeJS.WriteStream, chunk: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (stream.write(chunk)) {
+      resolve();
+    } else {
+      stream.once('drain', () => resolve());
+    }
+  });
 }
 
 function checkNodeVersion(): CheckResult {
@@ -86,9 +95,9 @@ function checkNodeVersion(): CheckResult {
   };
 }
 
-async function checkBwBinary(): Promise<CheckResult> {
+async function checkBwBinary(logger?: Logger): Promise<CheckResult> {
   try {
-    const version = await getBwVersion();
+    const version = await getBwVersion(logger);
     return { name: 'bw', status: 'ok', detail: `v${version}` };
   } catch (err: unknown) {
     const code = (err as { code?: string } | null)?.code;
@@ -114,16 +123,11 @@ function checkBwSession(): CheckResult {
 
 async function checkConfig(opts: DoctorOptions): Promise<CheckResult> {
   try {
-    await loadConfig({
+    const { path } = await loadConfigWithPath({
       cliConfigPath: opts.cliConfigPath,
       envConfigPath: opts.envConfigPath,
     });
-    const candidates = configDiscoveryStack({
-      cliConfigPath: opts.cliConfigPath,
-      envConfigPath: opts.envConfigPath,
-    });
-    const location = candidates.length > 0 ? candidates[0]!.path : 'defaults';
-    return { name: 'config', status: 'ok', detail: `valid (${location})` };
+    return { name: 'config', status: 'ok', detail: `valid (${path ?? 'defaults'})` };
   } catch (err: unknown) {
     if (err instanceof ConfigError) {
       return { name: 'config', status: 'fail', detail: err.message };

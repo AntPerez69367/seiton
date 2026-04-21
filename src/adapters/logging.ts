@@ -45,15 +45,23 @@ const SAFE_ENV_KEYS = new Set([
   'SEITON_LOGGING_LEVEL',
 ]);
 
+function sanitizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeValue);
+  }
+  if (typeof value === 'object' && value !== null) {
+    return sanitizeContext(value as Record<string, unknown>);
+  }
+  return value;
+}
+
 export function sanitizeContext(ctx: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(ctx)) {
     if (typeof value === 'string' && UNSAFE_PATTERNS.test(key) && !SAFE_ENV_KEYS.has(key)) {
       result[key] = '[REDACTED]';
-    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      result[key] = sanitizeContext(value as Record<string, unknown>);
     } else {
-      result[key] = value;
+      result[key] = sanitizeValue(value);
     }
   }
   return result;
@@ -71,10 +79,10 @@ export function formatJsonLog(entry: LogEntry): string {
     timestamp: entry.timestamp,
     level: entry.level,
     message: entry.message,
-    context: entry.context && Object.keys(entry.context).length > 0
-      ? entry.context
-      : {},
   };
+  if (entry.context && Object.keys(entry.context).length > 0) {
+    obj.context = entry.context;
+  }
   return JSON.stringify(obj);
 }
 

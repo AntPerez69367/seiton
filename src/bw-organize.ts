@@ -32,13 +32,37 @@ Global Flags:
 
 Run 'seiton <command> --help' for command-specific usage.`;
 
+const VALUE_TAKING_FLAGS = new Set(['--config']);
+
+function findFirstPositional(rawArgs: string[]): { index: number; value: string } | undefined {
+  for (let i = 0; i < rawArgs.length; i++) {
+    const a = rawArgs[i]!;
+    if (!a.startsWith('-')) {
+      return { index: i, value: a };
+    }
+    if (VALUE_TAKING_FLAGS.has(a)) {
+      i++;
+    }
+  }
+  return undefined;
+}
+
 async function main(): Promise<void> {
   const rawArgs = process.argv.slice(2);
-  const commandIndex = rawArgs.findIndex(a => !a.startsWith('-'));
-  const command = commandIndex >= 0 ? rawArgs[commandIndex] : undefined;
+  const firstPos = findFirstPositional(rawArgs);
 
-  if (command === 'doctor') {
-    const doctorArgs = rawArgs.slice(commandIndex + 1);
+  if (firstPos?.value === 'doctor') {
+    const doctorArgs = [...rawArgs.slice(0, firstPos.index), ...rawArgs.slice(firstPos.index + 1)];
+    const verboseCount = doctorArgs.filter((a) => a === '--verbose' || a === '-v').length;
+    const quiet = doctorArgs.includes('--quiet') || doctorArgs.includes('-q');
+    const earlyLog = quiet || verboseCount === 0
+      ? createNoopLogger()
+      : createLogger({
+          format: 'text',
+          level: verboseCount >= 2 ? 'debug' : 'info',
+          clock: createSystemClock(),
+        });
+    installSignalHandlers(earlyLog);
     await runDoctor(doctorArgs);
     return;
   }
@@ -77,14 +101,15 @@ async function main(): Promise<void> {
   const verboseCount = Array.isArray(args.values.verbose)
     ? args.values.verbose.length
     : args.values.verbose ? 1 : 0;
+  const quiet = Boolean(args.values.quiet);
 
-  const log = verboseCount > 0
-    ? createLogger({
+  const log = quiet || verboseCount === 0
+    ? createNoopLogger()
+    : createLogger({
         format: 'text',
         level: verboseCount >= 2 ? 'debug' : 'info',
         clock: createSystemClock(),
-      })
-    : createNoopLogger();
+      });
 
   installSignalHandlers(log);
 

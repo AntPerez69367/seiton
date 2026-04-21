@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ## [0.2.7] - 2026-04-20
 
 ### Added
@@ -15,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Journal system** (`src/core/journal-types.ts`, `src/core/journal.ts`): Versioned transaction log format (version 1) for multi-step mutations. Supports creating, reading, writing, and removing journal entries. Includes backup/restore of original files, rollback on failure, and recovery detection for interrupted runs. (M8)
+
 ## [0.2.5] - 2026-04-20
 
 ### Added
@@ -24,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **BUG FIX:** `getEnvAsInt` in `src/adapters/process.ts` now treats empty string as invalid (throws `ProcessError` with `ENV_INVALID`) instead of returning 0. Test updated to match. (M6)
+
 ## [0.2.3] - 2026-04-20
 
 ### Added
@@ -33,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Domain types** (`src/lib/domain/types.ts`): BwItem, BwFolder, BwLoginUri, BwLogin zod schemas with `.passthrough()` for round-trip safety. ItemType enum. BwErrorCode discriminated error type with `makeBwError` constructor. (M4)
+
 ## [0.2.1] - 2026-04-19
 
 ### Added

@@ -85,8 +85,13 @@ describe('Transaction executor', () => {
 
       const result = await executeTransaction('multi', [
         { type: 'write', path: target, content: 'modified' },
-        { type: 'write', path: '/nonexistent-dir-xyz/impossible.json', content: 'x' },
-      ], { ...opts, faultInjection: undefined });
+        { type: 'write', path: join(tmp, 'second.json'), content: 'x' },
+      ], {
+        ...opts,
+        faultInjection: (idx, phase) => {
+          if (idx === 1 && phase === 'before') throw new Error('injected failure');
+        },
+      });
 
       assert.equal(result.success, false);
       assert.equal(result.rolledBack, true);
@@ -133,6 +138,38 @@ describe('Transaction executor', () => {
       const secondExists = await opts.fs.exists(second);
       assert.equal(secondExists, false);
     });
+
+    it('records backup before mutation so crashes after mutation are recoverable', async () => {
+      const opts = makeOpts(tmp);
+      const target = join(tmp, 'write-ahead.txt');
+      await writeFile(target, 'original');
+
+      const result = await executeTransaction('test', [
+        { type: 'write', path: target, content: 'modified' },
+      ], {
+        ...opts,
+        skipRollbackOnFault: true,
+        faultInjection: (idx, phase) => {
+          if (idx === 0 && phase === 'after-mutation') throw new Error('crash after mutation');
+        },
+      });
+
+      assert.equal(result.success, false);
+      assert.equal(result.rolledBack, false);
+
+      const midFlightContent = await readFile(target, 'utf-8');
+      assert.equal(midFlightContent, 'modified');
+
+      const journalExists = await opts.fs.exists(opts.journalPath);
+      assert.equal(journalExists, true);
+
+      const recovery = await recoverFromJournal(opts);
+      assert.ok(recovery);
+      assert.equal(recovery.rolledBack, true);
+
+      const restored = await readFile(target, 'utf-8');
+      assert.equal(restored, 'original');
+    });
   });
 
   describe('recoverFromJournal', () => {
@@ -147,28 +184,35 @@ describe('Transaction executor', () => {
       const target = join(tmp, 'recover-target.json');
       await writeFile(target, 'original');
 
-      let interrupted = false;
-      try {
-        await executeTransaction('test', [
-          { type: 'write', path: target, content: 'modified' },
-          { type: 'write', path: join(tmp, 'second.txt'), content: 'data' },
-        ], {
-          ...opts,
-          faultInjection: (idx, phase) => {
-            if (idx === 1 && phase === 'before') {
-              interrupted = true;
-              throw new Error('simulated interrupt');
-            }
-          },
-        });
-      } catch {
-        // swallow
-      }
+      const crashed = await executeTransaction('test', [
+        { type: 'write', path: target, content: 'modified' },
+        { type: 'write', path: join(tmp, 'second.txt'), content: 'data' },
+      ], {
+        ...opts,
+        skipRollbackOnFault: true,
+        faultInjection: (idx, phase) => {
+          if (idx === 1 && phase === 'before') throw new Error('simulated interrupt');
+        },
+      });
 
-      assert.equal(interrupted, true);
+      assert.equal(crashed.success, false);
+      assert.equal(crashed.rolledBack, false);
 
-      const content = await readFile(target, 'utf-8');
-      assert.equal(content, 'original');
+      const midFlight = await readFile(target, 'utf-8');
+      assert.equal(midFlight, 'modified');
+
+      const journalExists = await opts.fs.exists(opts.journalPath);
+      assert.equal(journalExists, true);
+
+      const recovery = await recoverFromJournal(opts);
+      assert.ok(recovery);
+      assert.equal(recovery.rolledBack, true);
+
+      const restored = await readFile(target, 'utf-8');
+      assert.equal(restored, 'original');
+
+      const journalAfter = await opts.fs.exists(opts.journalPath);
+      assert.equal(journalAfter, false);
     });
   });
 });

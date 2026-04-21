@@ -1,10 +1,10 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
 const execFileAsync = promisify(execFile);
@@ -41,14 +41,24 @@ async function runCli(
     );
     return { stdout, stderr, exitCode: 0 };
   } catch (err: unknown) {
-    const e = err as { stdout: string; stderr: string; code: number };
-    return { stdout: e.stdout ?? '', stderr: e.stderr ?? '', exitCode: e.code };
+    const e = err as { stdout?: string; stderr?: string; code?: number | string; signal?: string; killed?: boolean };
+    const exitCode = typeof e.code === 'number' ? e.code : -1;
+    const signalNote = e.signal ? `\n[killed by signal: ${e.signal}]` : '';
+    return {
+      stdout: e.stdout ?? '',
+      stderr: (e.stderr ?? '') + signalNote,
+      exitCode,
+    };
   }
 }
 
 describe('--verbose flag propagation', () => {
   beforeEach(async () => {
     tempHome = await mkdtemp(join(tmpdir(), 'seiton-verbose-'));
+  });
+
+  afterEach(async () => {
+    await rm(tempHome, { recursive: true, force: true });
   });
 
   it('--verbose on config show emits log lines to stderr', async () => {

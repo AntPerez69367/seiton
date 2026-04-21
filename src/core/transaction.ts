@@ -1,7 +1,7 @@
+import { dirname } from 'node:path';
 import type { FsAdapter } from '../adapters/fs.js';
 import type { Clock } from '../adapters/clock.js';
 import type { Logger } from '../adapters/logging.js';
-import { dirOf } from './fs-utils.js';
 import {
   createJournalEntry,
   writeJournal,
@@ -13,6 +13,7 @@ import {
   markOpApplied,
   markComplete,
   markFailed,
+  setOpBackup,
   isRecoverable,
   type JournalOptions,
 } from './journal.js';
@@ -39,9 +40,10 @@ export interface TransactionOptions {
   logger?: Logger;
   dryRun?: boolean;
   faultInjection?: FaultInjectionHook;
+  skipRollbackOnFault?: boolean;
 }
 
-export type FaultInjectionHook = (opIndex: number, phase: 'before' | 'after') => void;
+export type FaultInjectionHook = (opIndex: number, phase: 'before' | 'after' | 'after-backup-write' | 'after-mutation') => void;
 
 export interface TransactionResult {
   success: boolean;
@@ -84,12 +86,19 @@ export async function executeTransaction(
       opts.faultInjection?.(i, 'before');
 
       const bkPath = await backupFile(op.path, entry.id, i, journalOpts);
+      if (bkPath) {
+        entry = setOpBackup(entry, i, bkPath);
+        await writeJournal(entry, journalOpts);
+      }
+      opts.faultInjection?.(i, 'after-backup-write');
+
       if (op.type === 'write') {
-        await opts.fs.ensureDir(dirOf(op.path));
+        await opts.fs.ensureDir(dirname(op.path));
         await opts.fs.writeAtomic(op.path, op.content, op.mode);
       } else {
         await opts.fs.remove(op.path);
       }
+      opts.faultInjection?.(i, 'after-mutation');
 
       entry = markOpApplied(entry, i, bkPath || undefined);
       await writeJournal(entry, journalOpts);
@@ -110,11 +119,23 @@ export async function executeTransaction(
       error: err instanceof Error ? err.message : String(err),
     });
     entry = markFailed(entry);
-    await writeJournal(entry, journalOpts).catch((e: unknown) => { opts.logger?.warn('transaction: rollback/cleanup step failed', { error: e instanceof Error ? e.message : String(e) }); });
-    await rollbackEntry(entry, journalOpts).catch((e: unknown) => { opts.logger?.warn('transaction: rollback/cleanup step failed', { error: e instanceof Error ? e.message : String(e) }); });
-    await cleanupBackups(entry, journalOpts).catch((e: unknown) => { opts.logger?.warn('transaction: rollback/cleanup step failed', { error: e instanceof Error ? e.message : String(e) }); });
-    await removeJournal(journalOpts).catch((e: unknown) => { opts.logger?.warn('transaction: rollback/cleanup step failed', { error: e instanceof Error ? e.message : String(e) }); });
-    return { success: false, journalId: entry.id, appliedCount, rolledBack: true };
+    if (opts.skipRollbackOnFault) {
+      await writeJournal(entry, journalOpts).catch(() => {});
+      return { success: false, journalId: entry.id, appliedCount, rolledBack: false };
+    }
+    let rollbackCompleted = true;
+    const logStep = (step: string) => (e: unknown) => {
+      rollbackCompleted = false;
+      opts.logger?.warn('transaction: rollback step failed', {
+        step,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    };
+    await writeJournal(entry, journalOpts).catch(logStep('markFailed'));
+    await rollbackEntry(entry, journalOpts).catch(logStep('rollbackEntry'));
+    await cleanupBackups(entry, journalOpts).catch(logStep('cleanupBackups'));
+    await removeJournal(journalOpts).catch(logStep('removeJournal'));
+    return { success: false, journalId: entry.id, appliedCount, rolledBack: rollbackCompleted };
   }
 }
 

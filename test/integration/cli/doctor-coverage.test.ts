@@ -94,7 +94,7 @@ async function runThrowRunner(
   }
 }
 
-describe('seiton doctor — coverage gap tests', () => {
+describe('seiton doctor — coverage gap tests', { skip: process.platform === 'win32' ? 'POSIX-only shim (bw CLI stub)' : false }, () => {
   beforeEach(async () => {
     tempHome = await mkdtemp(join(tmpdir(), 'seiton-doctor-cov-'));
   });

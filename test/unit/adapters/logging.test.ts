@@ -47,7 +47,7 @@ describe('logging adapter', () => {
       assert.equal(parsed['timestamp'], FIXED_ISO);
       assert.equal(parsed['level'], 'info');
       assert.equal(parsed['message'], 'started');
-      assert.deepEqual(parsed['context'], {});
+      assert.equal('context' in parsed, false);
     });
 
     it('includes context when present', () => {
@@ -62,11 +62,11 @@ describe('logging adapter', () => {
       assert.deepEqual(parsed['context'], { path: '/foo' });
     });
 
-    it('includes empty context object when no context provided', () => {
+    it('omits context key when context is empty', () => {
       const entry: LogEntry = { timestamp: FIXED_ISO, level: 'warn', message: 'x', context: {} };
       const result = formatJsonLog(entry);
       const parsed = JSON.parse(result) as Record<string, unknown>;
-      assert.deepEqual(parsed['context'], {});
+      assert.equal('context' in parsed, false);
     });
   });
 
@@ -103,6 +103,20 @@ describe('logging adapter', () => {
       const ctx = { SEITON_UNKNOWN_FLAG: 42 };
       const result = sanitizeContext(ctx);
       assert.equal(result['SEITON_UNKNOWN_FLAG'], 42);
+    });
+
+    it('recursively sanitizes objects inside arrays', () => {
+      const ctx = { items: [{ SEITON_SECRET: 'abc' }, { HOME: '/home' }] };
+      const result = sanitizeContext(ctx);
+      const items = result['items'] as Array<Record<string, unknown>>;
+      assert.equal(items[0]!['SEITON_SECRET'], '[REDACTED]');
+      assert.equal(items[1]!['HOME'], '/home');
+    });
+
+    it('passes through arrays of primitives unchanged', () => {
+      const ctx = { tags: ['a', 'b', 'c'] };
+      const result = sanitizeContext(ctx);
+      assert.deepEqual(result['tags'], ['a', 'b', 'c']);
     });
   });
 

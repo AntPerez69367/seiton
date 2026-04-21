@@ -4,6 +4,7 @@ import {
   registerCleanup,
   isShuttingDown,
   resetSignalState,
+  getRegisteredHandlerCount,
 } from '../../../src/core/signals.js';
 
 describe('Signal handling', () => {
@@ -36,7 +37,9 @@ describe('Signal handling', () => {
     it('clears all registered handlers', () => {
       registerCleanup(async () => {});
       registerCleanup(async () => {});
+      assert.equal(getRegisteredHandlerCount(), 2);
       resetSignalState();
+      assert.equal(getRegisteredHandlerCount(), 0);
       assert.equal(isShuttingDown(), false);
     });
   });

@@ -1,5 +1,5 @@
-import { readFile, writeFile, rename, unlink, stat, lstat, mkdir } from 'node:fs/promises';
-import { join, resolve, dirname, relative } from 'node:path';
+import { readFile, writeFile, rename, unlink, lstat, mkdir } from 'node:fs/promises';
+import { join, resolve, dirname, relative, sep } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import type { Logger } from './logging.js';
 
@@ -35,6 +35,8 @@ export interface FsAdapter {
   ensureDir(path: string): Promise<void>;
 }
 
+type FsOperation = 'read' | 'write';
+
 export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
   const resolvedRoot = root ? resolve(root) : undefined;
 
@@ -42,12 +44,13 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
     if (!resolvedRoot) return;
     const resolved = resolve(targetPath);
     const rel = relative(resolvedRoot, resolved);
-    if (rel.startsWith('..') || resolve(resolvedRoot, rel) !== resolved) {
+    const escapes = rel === '..' || rel.startsWith(`..${sep}`);
+    if (escapes || resolve(resolvedRoot, rel) !== resolved) {
       throw new FsError(FsErrorCode.PATH_ESCAPE, targetPath, `Path ${targetPath} escapes root ${resolvedRoot}`);
     }
   }
 
-  async function assertNotSymlink(targetPath: string): Promise<void> {
+  async function assertNotSymlink(targetPath: string, operation: FsOperation): Promise<void> {
     try {
       const stats = await lstat(targetPath);
       if (stats.isSymbolicLink()) {
@@ -57,7 +60,7 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
       if (err instanceof FsError) throw err;
       const code = (err as { code?: string } | null)?.code;
       if (code === 'ENOENT') return;
-      throw mapNodeError(err, targetPath);
+      throw mapNodeError(err, targetPath, operation);
     }
   }
 
@@ -65,19 +68,19 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
     async readText(path: string): Promise<string> {
       const resolved = resolve(path);
       assertWithinRoot(resolved);
-      await assertNotSymlink(resolved);
+      await assertNotSymlink(resolved, 'read');
       logger?.debug('fs: readText', { path: resolved });
       try {
         return await readFile(resolved, 'utf-8');
       } catch (err: unknown) {
-        throw mapNodeError(err, resolved);
+        throw mapNodeError(err, resolved, 'read');
       }
     },
 
     async writeAtomic(path: string, content: string, mode: number = 0o600): Promise<void> {
       const resolved = resolve(path);
       assertWithinRoot(resolved);
-      await assertNotSymlink(resolved);
+      await assertNotSymlink(resolved, 'write');
       logger?.debug('fs: writeAtomic', { path: resolved, mode });
 
       const dir = dirname(resolved);
@@ -86,14 +89,25 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
       try {
         await writeFile(tempName, content, { mode });
       } catch (err: unknown) {
-        throw mapNodeError(err, resolved);
+        throw mapNodeError(err, resolved, 'write');
       }
 
       try {
         await rename(tempName, resolved);
       } catch (err: unknown) {
-        try { await unlink(tempName); } catch (e: unknown) { const c = (e as {code?:string}|null)?.code; if (c !== 'ENOENT' && c !== 'EPERM') throw e; }
-        throw mapNodeError(err, resolved);
+        try {
+          await unlink(tempName);
+        } catch (e: unknown) {
+          const cleanupCode = (e as { code?: string } | null)?.code;
+          if (cleanupCode !== 'ENOENT' && cleanupCode !== 'EPERM') {
+            logger?.warn('fs: temp file cleanup failed', {
+              tempName,
+              code: cleanupCode,
+              error: e instanceof Error ? e.message : String(e),
+            });
+          }
+        }
+        throw mapNodeError(err, resolved, 'write');
       }
     },
 
@@ -106,7 +120,7 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
       } catch (err: unknown) {
         const code = (err as { code?: string } | null)?.code;
         if (code === 'ENOENT') return;
-        throw mapNodeError(err, resolved);
+        throw mapNodeError(err, resolved, 'write');
       }
     },
 
@@ -114,12 +128,12 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
       const resolved = resolve(path);
       assertWithinRoot(resolved);
       try {
-        await stat(resolved);
-        return true;
+        const stats = await lstat(resolved);
+        return !stats.isSymbolicLink();
       } catch (err: unknown) {
         const code = (err as { code?: string } | null)?.code;
         if (code === 'ENOENT') return false;
-        throw mapNodeError(err, resolved);
+        throw mapNodeError(err, resolved, 'read');
       }
     },
 
@@ -129,13 +143,13 @@ export function createFsAdapter(root?: string, logger?: Logger): FsAdapter {
       try {
         await mkdir(resolved, { recursive: true });
       } catch (err: unknown) {
-        throw mapNodeError(err, resolved);
+        throw mapNodeError(err, resolved, 'write');
       }
     },
   };
 }
 
-function mapNodeError(err: unknown, path: string): FsError {
+function mapNodeError(err: unknown, path: string, operation: FsOperation = 'write'): FsError {
   const code = (err as { code?: string } | null)?.code;
   const msg = err instanceof Error ? err.message : String(err);
   switch (code) {
@@ -149,6 +163,8 @@ function mapNodeError(err: unknown, path: string): FsError {
     case 'EISDIR':
       return new FsError(FsErrorCode.NOT_A_FILE, path, `Not a file: ${path}: ${msg}`);
     default:
-      return new FsError(FsErrorCode.WRITE_FAILED, path, `I/O error at ${path}: ${msg}`);
+      return operation === 'read'
+        ? new FsError(FsErrorCode.READ_FAILED, path, `I/O error at ${path}: ${msg}`)
+        : new FsError(FsErrorCode.WRITE_FAILED, path, `I/O error at ${path}: ${msg}`);
   }
 }

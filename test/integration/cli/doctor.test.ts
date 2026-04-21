@@ -62,7 +62,7 @@ async function runDoctor(
   }
 }
 
-describe('seiton doctor', () => {
+describe('seiton doctor', { skip: process.platform === 'win32' ? 'POSIX-only shim (bw CLI stub)' : false }, () => {
   beforeEach(async () => {
     tempHome = await mkdtemp(join(tmpdir(), 'seiton-doctor-'));
   });

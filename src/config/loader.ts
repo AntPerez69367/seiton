@@ -17,16 +17,30 @@ export interface LoadConfigOptions extends ConfigPathOptions {
   logger?: Logger;
 }
 
-export async function loadConfig(opts: LoadConfigOptions = {}): Promise<Config> {
-  opts.logger?.debug('config: loading', { cliConfigPath: opts.cliConfigPath });
-  const fileConfig = await loadConfigFile(opts);
-  const withEnv = applyEnvOverrides(fileConfig);
-  const config = validateConfig(withEnv);
-  opts.logger?.debug('config: loaded successfully');
-  return config;
+export interface LoadedConfig {
+  config: Config;
+  path: string | null;
 }
 
-async function loadConfigFile(opts: LoadConfigOptions): Promise<Record<string, unknown>> {
+export async function loadConfig(opts: LoadConfigOptions = {}): Promise<Config> {
+  return (await loadConfigWithPath(opts)).config;
+}
+
+export async function loadConfigWithPath(opts: LoadConfigOptions = {}): Promise<LoadedConfig> {
+  opts.logger?.debug('config: loading', { cliConfigPath: opts.cliConfigPath });
+  const { raw, path } = await loadConfigFile(opts);
+  const withEnv = applyEnvOverrides(raw);
+  const config = validateConfig(withEnv);
+  opts.logger?.debug('config: loaded successfully', { path });
+  return { config, path };
+}
+
+interface LoadedFile {
+  raw: Record<string, unknown>;
+  path: string | null;
+}
+
+async function loadConfigFile(opts: LoadConfigOptions): Promise<LoadedFile> {
   const candidates = configDiscoveryStack(opts);
 
   for (const candidate of candidates) {
@@ -54,10 +68,10 @@ async function loadConfigFile(opts: LoadConfigOptions): Promise<Record<string, u
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       throw new ConfigError('CONFIG_VALIDATION', `Config at ${candidate.path} must be a JSON object, got ${Array.isArray(parsed) ? 'array' : parsed === null ? 'null' : typeof parsed}`);
     }
-    return parsed as Record<string, unknown>;
+    return { raw: parsed as Record<string, unknown>, path: candidate.path };
   }
 
-  return { version: 1 };
+  return { raw: { version: 1 }, path: null };
 }
 
 const ENV_MAP: ReadonlyMap<string, { path: readonly string[]; type: 'string' | 'number' | 'boolean' }> = new Map([

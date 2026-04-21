@@ -16,7 +16,7 @@ describe('Clock', () => {
     it('returns an ISO string', () => {
       const clock = createSystemClock();
       const iso = clock.isoNow();
-      assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/.test(iso));
+      assert.ok(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(iso));
     });
   });
 

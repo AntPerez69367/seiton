@@ -149,9 +149,17 @@ describe('ProcessAdapter', () => {
       assert.equal(proc.getEnvAsBool('BOOL'), false);
     });
 
-    it('returns false for empty string', () => {
+    it('throws ENV_INVALID for empty string', () => {
       const proc = createProcessAdapter({ BOOL: '' });
-      assert.equal(proc.getEnvAsBool('BOOL'), false);
+      assert.throws(
+        () => proc.getEnvAsBool('BOOL'),
+        (err: unknown) => {
+          assert.ok(err instanceof ProcessError);
+          assert.equal(err.code, ProcessErrorCode.ENV_INVALID);
+          assert.equal(err.variable, 'BOOL');
+          return true;
+        },
+      );
     });
 
     it('returns undefined when not set', () => {

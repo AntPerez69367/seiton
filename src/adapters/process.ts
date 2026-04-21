@@ -74,9 +74,16 @@ export function createProcessAdapter(
     getEnvAsBool(name: string): boolean | undefined {
       const raw = env[name];
       if (raw === undefined) return undefined;
+      if (raw === '') {
+        throw new ProcessError(
+          ProcessErrorCode.ENV_INVALID,
+          name,
+          `Environment variable ${name}=${raw} is not a valid boolean`,
+        );
+      }
       const lower = raw.toLowerCase();
       if (lower === 'true' || lower === '1') return true;
-      if (lower === 'false' || lower === '0' || lower === '') return false;
+      if (lower === 'false' || lower === '0') return false;
       throw new ProcessError(
         ProcessErrorCode.ENV_INVALID,
         name,
