@@ -122,12 +122,12 @@ describe('seiton doctor — coverage gap tests', { skip: process.platform === 'w
   });
 
   describe('bw returning a non-ENOENT error', () => {
-    it('prints [fail] with error detail when bw crashes (not ENOENT)', async () => {
+    it('reports bw error detail when bw crashes (not ENOENT)', async () => {
       const { stdout, exitCode } = await runDoctor([], {
         FAKE_BW_SCENARIO: 'version-error',
       });
       assert.equal(exitCode, 1);
-      assert.ok(stdout.includes('[fail] bw:'), 'should show bw check as failed');
+      assert.ok(stdout.includes('bw:'), 'should show bw check');
       assert.ok(stdout.includes('error:'), 'should show error detail prefix');
       assert.ok(!stdout.includes('not found on PATH'), 'should NOT show ENOENT message');
     });

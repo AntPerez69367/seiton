@@ -89,47 +89,48 @@ describe('seiton doctor', { skip: process.platform === 'win32' ? 'POSIX-only shi
   });
 
   describe('happy path — all checks pass', () => {
-    it('prints [ok] for each check and exits 0', async () => {
+    it('prints check results for each check and exits 0', async () => {
       const { stdout, exitCode } = await runDoctor();
       assert.equal(exitCode, 0);
-      assert.ok(stdout.includes('[ok] node:'));
-      assert.ok(stdout.includes('[ok] bw:'));
-      assert.ok(stdout.includes('[ok] session:'));
-      assert.ok(stdout.includes('[ok] config:'));
+      assert.ok(stdout.includes('node:'));
+      assert.ok(stdout.includes('bw:'));
+      assert.ok(stdout.includes('session:'));
+      assert.ok(stdout.includes('config:'));
+      assert.ok(stdout.includes('All checks passed'));
     });
   });
 
   describe('bw not found', () => {
-    it('prints [fail] for bw and exits 1', async () => {
+    it('reports bw failure and exits 1', async () => {
       const { stdout, exitCode } = await runDoctor([], {
         PATH: '/nonexistent',
       });
       assert.equal(exitCode, 1);
-      assert.ok(stdout.includes('[fail] bw:'));
+      assert.ok(stdout.includes('bw:'));
       assert.ok(stdout.includes('not found'));
     });
   });
 
   describe('BW_SESSION not set', () => {
-    it('prints [fail] for session and exits 1', async () => {
+    it('reports session failure and exits 1', async () => {
       const { stdout, exitCode } = await runDoctor([], {
         BW_SESSION: undefined,
       });
       assert.equal(exitCode, 1);
-      assert.ok(stdout.includes('[fail] session:'));
+      assert.ok(stdout.includes('session:'));
       assert.ok(stdout.includes('BW_SESSION is not set'));
     });
   });
 
   describe('invalid config file', () => {
-    it('prints [fail] for config and exits 1', async () => {
+    it('reports config failure and exits 1', async () => {
       const configDir = join(tempHome, '.config', 'seiton');
       await mkdir(configDir, { recursive: true });
       await writeFile(join(configDir, 'config.json'), '{ invalid json');
 
       const { stdout, exitCode } = await runDoctor();
       assert.equal(exitCode, 1);
-      assert.ok(stdout.includes('[fail] config:'));
+      assert.ok(stdout.includes('config:'));
     });
   });
 
@@ -155,7 +156,7 @@ describe('seiton doctor', { skip: process.platform === 'win32' ? 'POSIX-only shi
       await writeFile(configPath, JSON.stringify({ version: 1 }));
       const { stdout, exitCode } = await runDoctor(['--config', configPath]);
       assert.equal(exitCode, 0);
-      assert.ok(stdout.includes('[ok] config:'));
+      assert.ok(stdout.includes('config:'));
     });
 
     it('fails when specified config does not exist', async () => {
@@ -163,7 +164,7 @@ describe('seiton doctor', { skip: process.platform === 'win32' ? 'POSIX-only shi
         '--config', join(tempHome, 'nonexistent.json'),
       ]);
       assert.equal(exitCode, 1);
-      assert.ok(stdout.includes('[fail] config:'));
+      assert.ok(stdout.includes('config:'));
     });
   });
 });

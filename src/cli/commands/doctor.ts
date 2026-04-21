@@ -5,6 +5,7 @@ import { getBwVersion } from '../../lib/bw.js';
 import { VERSION } from '../../version.js';
 import { createLogger, createNoopLogger, type Logger } from '../../adapters/logging.js';
 import { createSystemClock } from '../../adapters/clock.js';
+import { createPromptAdapter } from '../../ui/prompts.js';
 
 const DOCTOR_HELP = `seiton doctor — preflight checks for bw, session, and config
 
@@ -34,6 +35,7 @@ export interface DoctorOptions {
   envConfigPath?: string;
   debug?: boolean;
   logger?: Logger;
+  promptStyle?: 'clack' | 'plain';
 }
 
 interface CheckResult {
@@ -44,8 +46,10 @@ interface CheckResult {
 
 export async function doctor(opts: DoctorOptions = {}): Promise<void> {
   const log = opts.logger ?? createNoopLogger();
+  const prompt = createPromptAdapter(opts.promptStyle ?? 'clack');
 
   log.info('doctor command started', { version: VERSION });
+  prompt.intro(`seiton doctor v${VERSION}`);
 
   const results: CheckResult[] = [];
 
@@ -62,25 +66,24 @@ export async function doctor(opts: DoctorOptions = {}): Promise<void> {
     failed: results.filter(r => r.status === 'fail').length,
   });
 
-  const output = results.map(formatCheck).join('\n') + '\n';
-  await writeAndDrain(process.stdout, output);
+  for (const result of results) {
+    if (result.status === 'ok') {
+      prompt.logSuccess(`${result.name}: ${result.detail}`);
+    } else if (result.status === 'warn') {
+      prompt.logWarning(`${result.name}: ${result.detail}`);
+    } else {
+      prompt.logError(`${result.name}: ${result.detail}`);
+    }
+  }
 
   if (hasFail) {
+    prompt.outro('Some checks failed.');
     log.debug('doctor exiting with failure');
     process.exit(ExitCode.GENERAL_ERROR);
   }
+  prompt.outro('All checks passed.');
   log.debug('doctor exiting with success');
   process.exit(ExitCode.SUCCESS);
-}
-
-function writeAndDrain(stream: NodeJS.WriteStream, chunk: string): Promise<void> {
-  return new Promise((resolve) => {
-    if (stream.write(chunk)) {
-      resolve();
-    } else {
-      stream.once('drain', () => resolve());
-    }
-  });
 }
 
 function checkNodeVersion(): CheckResult {
@@ -139,13 +142,6 @@ async function checkConfig(opts: DoctorOptions): Promise<CheckResult> {
 
 function checkVersion(): CheckResult {
   return { name: 'version', status: 'ok', detail: `seiton v${VERSION}` };
-}
-
-function formatCheck(result: CheckResult): string {
-  const tag = result.status === 'ok' ? '[ok]'
-    : result.status === 'warn' ? '[warn]'
-    : '[fail]';
-  return `${tag} ${result.name}: ${result.detail}`;
 }
 
 export function parseDoctorArgs(argv: string[]): { help: boolean; opts: DoctorOptions } {
