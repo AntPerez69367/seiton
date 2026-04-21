@@ -133,7 +133,10 @@ export function createBwAdapter(bwBinary?: string | null, logger?: Logger): BwAd
       if (!result.ok) return result;
       try {
         const parsed = JSON.parse(result.data) as { id?: string };
-        return { ok: true, data: parsed.id ?? '' };
+        if (!parsed.id) {
+          return { ok: false, error: makeBwError(BwErrorCode.SCHEMA_MISMATCH, 'bw create folder response missing id field') };
+        }
+        return { ok: true, data: parsed.id };
       } catch {
         return { ok: false, error: makeBwError(BwErrorCode.INVALID_JSON, 'Failed to parse bw create folder output') };
       }
