@@ -1,8 +1,0 @@
-seiton:
-  name: seiton
-  title: Bitwarden Vault Auditor
-  url: https://github.com/anthonyj-perez/seiton
-  image_url: https://github.com/ghost.png
-  page: true
-  socials:
-    github: anthonyj-perez
