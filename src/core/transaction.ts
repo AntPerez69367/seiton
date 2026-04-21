@@ -124,17 +124,17 @@ export async function executeTransaction(
       return { success: false, journalId: entry.id, appliedCount, rolledBack: false };
     }
     let rollbackCompleted = true;
-    const logStep = (step: string) => (e: unknown) => {
+    const logStep = (step: string, message: string) => (e: unknown) => {
       rollbackCompleted = false;
-      opts.logger?.warn('transaction: rollback step failed', {
+      opts.logger?.warn(message, {
         step,
         error: e instanceof Error ? e.message : String(e),
       });
     };
-    await writeJournal(entry, journalOpts).catch(logStep('markFailed'));
-    await rollbackEntry(entry, journalOpts).catch(logStep('rollbackEntry'));
-    await cleanupBackups(entry, journalOpts).catch(logStep('cleanupBackups'));
-    await removeJournal(journalOpts).catch(logStep('removeJournal'));
+    await writeJournal(entry, journalOpts).catch(logStep('markFailed', 'transaction: journal write failed'));
+    await rollbackEntry(entry, journalOpts).catch(logStep('rollbackEntry', 'transaction: rollback failed'));
+    await cleanupBackups(entry, journalOpts).catch(logStep('cleanupBackups', 'transaction: backup cleanup failed'));
+    await removeJournal(journalOpts).catch(logStep('removeJournal', 'transaction: journal removal failed'));
     return { success: false, journalId: entry.id, appliedCount, rolledBack: rollbackCompleted };
   }
 }
