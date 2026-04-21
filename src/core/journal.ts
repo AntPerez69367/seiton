@@ -10,6 +10,7 @@ import {
   type JournalEntry,
   type JournalOperation,
 } from './journal-types.js';
+import { dirOf } from './fs-utils.js';
 
 export { JOURNAL_VERSION, JournalError, JournalErrorCode, parseJournal } from './journal-types.js';
 export type { JournalEntry, JournalOperation, JournalOpType, JournalStatus } from './journal-types.js';
@@ -198,11 +199,6 @@ export function markComplete(entry: JournalEntry): JournalEntry {
 
 export function markFailed(entry: JournalEntry): JournalEntry {
   return { ...entry, status: 'failed' };
-}
-
-function dirOf(path: string): string {
-  const lastSlash = path.lastIndexOf('/');
-  return lastSlash > 0 ? path.slice(0, lastSlash) : '/';
 }
 
 function joinPath(base: string, name: string): string {

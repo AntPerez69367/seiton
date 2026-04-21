@@ -1,6 +1,7 @@
 import type { FsAdapter } from '../adapters/fs.js';
 import type { Clock } from '../adapters/clock.js';
 import type { Logger } from '../adapters/logging.js';
+import { dirOf } from './fs-utils.js';
 import {
   createJournalEntry,
   writeJournal,
@@ -151,7 +152,3 @@ export async function recoverFromJournal(
   return { success: false, journalId: entry.id, appliedCount, rolledBack: true };
 }
 
-function dirOf(path: string): string {
-  const lastSlash = path.lastIndexOf('/');
-  return lastSlash > 0 ? path.slice(0, lastSlash) : '/';
-}

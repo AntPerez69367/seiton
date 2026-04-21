@@ -1,0 +1,14 @@
+security:
+  label: Security
+  permalink: /security
+  description: Password security and vault hygiene tips
+
+bitwarden:
+  label: Bitwarden
+  permalink: /bitwarden
+  description: Bitwarden vault management
+
+release:
+  label: Release
+  permalink: /release
+  description: seiton release announcements
