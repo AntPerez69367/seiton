@@ -51,6 +51,10 @@ export async function runDiscardCli(argv: string[]): Promise<void> {
     process.exit(ExitCode.SUCCESS);
   }
 
+  if (args.values['no-color']) {
+    process.env['NO_COLOR'] = '1';
+  }
+
   const verboseCount = Array.isArray(args.values.verbose)
     ? args.values.verbose.length
     : args.values.verbose ? 1 : 0;

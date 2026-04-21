@@ -80,6 +80,10 @@ export function parseDoctorArgs(argv: string[]): { help: boolean; opts: DoctorOp
     return { help: true, opts: {} };
   }
 
+  if (parsed.values['no-color']) {
+    process.env['NO_COLOR'] = '1';
+  }
+
   const verboseCount = Array.isArray(parsed.values.verbose)
     ? parsed.values.verbose.length
     : parsed.values.verbose ? 1 : 0;

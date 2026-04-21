@@ -227,7 +227,6 @@ function parseConfigFlags(argv: string[], sub: string): ParsedConfigArgs {
       options: {
         help: { type: 'boolean', short: 'h' },
         config: { type: 'string' },
-        'dry-run': { type: 'boolean' },
         'no-color': { type: 'boolean' },
         verbose: { type: 'boolean', short: 'v', multiple: true },
         quiet: { type: 'boolean', short: 'q' },
@@ -245,6 +244,10 @@ function parseConfigFlags(argv: string[], sub: string): ParsedConfigArgs {
   if (parsed.values.help) {
     process.stdout.write(`${CONFIG_HELP}\n`);
     process.exit(ExitCode.SUCCESS);
+  }
+
+  if (parsed.values['no-color']) {
+    process.env['NO_COLOR'] = '1';
   }
 
   const verboseCount = Array.isArray(parsed.values.verbose)
