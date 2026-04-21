@@ -97,13 +97,24 @@ describe('configDiscoveryStack', () => {
     assert.equal(stack[0]!.source, '--config');
   });
 
-  it('returns 3 soft candidates when no overrides', () => {
+  it('returns deduped soft candidates when no overrides', () => {
     process.env['HOME'] = '/test/home';
     delete process.env['XDG_CONFIG_HOME'];
     const stack = configDiscoveryStack();
+    assert.equal(stack.length, 2);
+    assert.ok(stack.every(c => !c.hardFail));
+    assert.ok(stack[0]!.path.endsWith('/.config/seiton/config.json'));
+    assert.ok(stack[1]!.path.endsWith('.seitonrc.json'));
+  });
+
+  it('returns 3 soft candidates when XDG_CONFIG_HOME diverges from $HOME/.config', () => {
+    process.env['HOME'] = '/test/home';
+    process.env['XDG_CONFIG_HOME'] = '/test/xdg';
+    const stack = configDiscoveryStack();
     assert.equal(stack.length, 3);
     assert.ok(stack.every(c => !c.hardFail));
-    assert.ok(stack[0]!.path.includes('config.json'));
+    assert.ok(stack[0]!.path.startsWith('/test/xdg'));
+    assert.ok(stack[1]!.path.startsWith('/test/home/.config'));
     assert.ok(stack[2]!.path.endsWith('.seitonrc.json'));
   });
 

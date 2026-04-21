@@ -1,0 +1,35 @@
+---
+slug: introducing-seiton
+title: Introducing seiton — a Bitwarden vault auditor
+authors: [seiton]
+tags: [security, bitwarden, release]
+---
+
+**seiton** (整頓, "set in order") is an interactive command-line tool that audits your Bitwarden vault for weak passwords, duplicates, reused credentials, and disorganized folders.
+
+<!-- truncate -->
+
+## Why seiton?
+
+Password vaults accumulate cruft over years: old accounts with the same password used ten times, entries with no username, near-duplicate logins from domain migrations. seiton walks through each finding so you can approve or skip every suggested change — no bulk overwrites, no surprises.
+
+## What it checks
+
+- **Weak passwords** — scored with zxcvbn-ts; configurable minimum strength threshold.
+- **Reused passwords** — SHA-256 grouping across all login items.
+- **Near-duplicate entries** — Levenshtein distance on item names, same-domain username collisions.
+- **Missing fields** — logins with no URI, no username, or no password set.
+- **Folder hygiene** — unorganized items offered a suggested folder based on configurable keyword rules.
+
+## Security by design
+
+Plaintext never leaves local memory. seiton has zero network I/O of its own, shells out only to the `bw` CLI for vault access, and every destructive operation requires interactive per-item confirmation. No `--force`, no `--yes-to-all`.
+
+## Getting started
+
+```bash
+npm install -g seiton
+BW_SESSION=$(bw unlock --raw) seiton audit
+```
+
+See the [Installation guide](/docs/getting-started/installation) and [User guide](/docs/user-guide/overview) for full setup instructions.

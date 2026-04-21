@@ -4,6 +4,10 @@ import { parseArgs } from 'node:util';
 import { VERSION } from './version.js';
 import { ExitCode } from './exit-codes.js';
 import { configShow } from './cli/commands/config.js';
+import { runDoctor } from './cli/commands/doctor.js';
+import { createLogger, createNoopLogger } from './adapters/logging.js';
+import { createSystemClock } from './adapters/clock.js';
+import { installSignalHandlers } from './core/signals.js';
 
 const HELP_TEXT = `seiton v${VERSION} — interactive Bitwarden vault auditor
 
@@ -19,6 +23,7 @@ Commands:
 
 Global Flags:
   --config <path>   Override the config file location
+  --dry-run         Print planned actions without performing them
   --no-color        Disable ANSI color output
   --verbose, -v     Increase log detail (-vv for trace)
   --quiet, -q       Suppress non-essential output
@@ -27,7 +32,41 @@ Global Flags:
 
 Run 'seiton <command> --help' for command-specific usage.`;
 
+const VALUE_TAKING_FLAGS = new Set(['--config']);
+
+function findFirstPositional(rawArgs: string[]): { index: number; value: string } | undefined {
+  for (let i = 0; i < rawArgs.length; i++) {
+    const a = rawArgs[i]!;
+    if (!a.startsWith('-')) {
+      return { index: i, value: a };
+    }
+    if (VALUE_TAKING_FLAGS.has(a)) {
+      i++;
+    }
+  }
+  return undefined;
+}
+
 async function main(): Promise<void> {
+  const rawArgs = process.argv.slice(2);
+  const firstPos = findFirstPositional(rawArgs);
+
+  if (firstPos?.value === 'doctor') {
+    const doctorArgs = [...rawArgs.slice(0, firstPos.index), ...rawArgs.slice(firstPos.index + 1)];
+    const verboseCount = doctorArgs.filter((a) => a === '--verbose' || a === '-v').length;
+    const quiet = doctorArgs.includes('--quiet') || doctorArgs.includes('-q');
+    const earlyLog = quiet || verboseCount === 0
+      ? createNoopLogger()
+      : createLogger({
+          format: 'text',
+          level: verboseCount >= 2 ? 'debug' : 'info',
+          clock: createSystemClock(),
+        });
+    installSignalHandlers(earlyLog);
+    await runDoctor(doctorArgs);
+    return;
+  }
+
   let args: ReturnType<typeof parseArgs>;
   try {
     args = parseArgs({
@@ -37,6 +76,7 @@ async function main(): Promise<void> {
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'V' },
         config: { type: 'string' },
+        'dry-run': { type: 'boolean' },
         'no-color': { type: 'boolean' },
         verbose: { type: 'boolean', short: 'v', multiple: true },
         quiet: { type: 'boolean', short: 'q' },
@@ -58,9 +98,29 @@ async function main(): Promise<void> {
     process.exit(ExitCode.SUCCESS);
   }
 
-  const [command, subcommand] = args.positionals;
-  if (command === 'config' && subcommand === 'show') {
-    await configShow(args.values.config as string | undefined);
+  const verboseCount = Array.isArray(args.values.verbose)
+    ? args.values.verbose.length
+    : args.values.verbose ? 1 : 0;
+  const quiet = Boolean(args.values.quiet);
+
+  const log = quiet || verboseCount === 0
+    ? createNoopLogger()
+    : createLogger({
+        format: 'text',
+        level: verboseCount >= 2 ? 'debug' : 'info',
+        clock: createSystemClock(),
+      });
+
+  installSignalHandlers(log);
+
+  const dryRun = Boolean(args.values['dry-run']);
+  const [positionalCommand, subcommand] = args.positionals;
+
+  log.info('seiton started', { command: positionalCommand, version: VERSION, dryRun });
+
+  if (positionalCommand === 'config' && subcommand === 'show') {
+    log.debug('dispatching config show');
+    await configShow(args.values.config as string | undefined, log, dryRun);
     return;
   }
 

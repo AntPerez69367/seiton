@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { configDiscoveryStack, type ConfigPathOptions } from './paths.js';
 import { parseConfig, type Config } from './schema.js';
 import { z } from 'zod';
+import type { Logger } from '../adapters/logging.js';
 
 export class ConfigError extends Error {
   readonly code: string;
@@ -12,15 +13,34 @@ export class ConfigError extends Error {
   }
 }
 
-export interface LoadConfigOptions extends ConfigPathOptions {}
-
-export async function loadConfig(opts: LoadConfigOptions = {}): Promise<Config> {
-  const fileConfig = await loadConfigFile(opts);
-  const withEnv = applyEnvOverrides(fileConfig);
-  return validateConfig(withEnv);
+export interface LoadConfigOptions extends ConfigPathOptions {
+  logger?: Logger;
 }
 
-async function loadConfigFile(opts: LoadConfigOptions): Promise<Record<string, unknown>> {
+export interface LoadedConfig {
+  config: Config;
+  path: string | null;
+}
+
+export async function loadConfig(opts: LoadConfigOptions = {}): Promise<Config> {
+  return (await loadConfigWithPath(opts)).config;
+}
+
+export async function loadConfigWithPath(opts: LoadConfigOptions = {}): Promise<LoadedConfig> {
+  opts.logger?.debug('config: loading', { cliConfigPath: opts.cliConfigPath });
+  const { raw, path } = await loadConfigFile(opts);
+  const withEnv = applyEnvOverrides(raw);
+  const config = validateConfig(withEnv);
+  opts.logger?.debug('config: loaded successfully', { path });
+  return { config, path };
+}
+
+interface LoadedFile {
+  raw: Record<string, unknown>;
+  path: string | null;
+}
+
+async function loadConfigFile(opts: LoadConfigOptions): Promise<LoadedFile> {
   const candidates = configDiscoveryStack(opts);
 
   for (const candidate of candidates) {
@@ -48,10 +68,10 @@ async function loadConfigFile(opts: LoadConfigOptions): Promise<Record<string, u
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       throw new ConfigError('CONFIG_VALIDATION', `Config at ${candidate.path} must be a JSON object, got ${Array.isArray(parsed) ? 'array' : parsed === null ? 'null' : typeof parsed}`);
     }
-    return parsed as Record<string, unknown>;
+    return { raw: parsed as Record<string, unknown>, path: candidate.path };
   }
 
-  return { version: 1 };
+  return { raw: { version: 1 }, path: null };
 }
 
 const ENV_MAP: ReadonlyMap<string, { path: readonly string[]; type: 'string' | 'number' | 'boolean' }> = new Map([
@@ -76,6 +96,8 @@ const ENV_MAP: ReadonlyMap<string, { path: readonly string[]; type: 'string' | '
   ['SEITON_UI_SHOW_REVISION_DATE', { path: ['ui', 'show_revision_date'], type: 'boolean' }],
   ['SEITON_UI_COLOR_SCHEME', { path: ['ui', 'color_scheme'], type: 'string' }],
   ['SEITON_UI_PROMPT_STYLE', { path: ['ui', 'prompt_style'], type: 'string' }],
+  ['SEITON_LOGGING_FORMAT', { path: ['logging', 'format'], type: 'string' }],
+  ['SEITON_LOGGING_LEVEL', { path: ['logging', 'level'], type: 'string' }],
 ]);
 
 export function applyEnvOverrides(config: Record<string, unknown>): Record<string, unknown> {

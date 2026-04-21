@@ -7,10 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-04-20
+
+### Added
+- [MILESTONE 8 ✓] feat: Implement Milestone 8: Error recovery and idempotency
+
+## [0.2.6] - 2026-04-20
+
+### Added
+- **Journal system** (`src/core/journal-types.ts`, `src/core/journal.ts`): Versioned transaction log format (version 1) for multi-step mutations. Supports creating, reading, writing, and removing journal entries. Includes backup/restore of original files, rollback on failure, and recovery detection for interrupted runs. (M8)
+
+## [0.2.5] - 2026-04-20
+
+### Added
+- **Logging facade** (`src/adapters/logging.ts`): Structured logging adapter supporting text and JSON formats, configurable log level (error/warn/info/debug), context sanitization that redacts unsafe `SEITON_*` env var values, injectable clock for deterministic timestamps. (M7)
+
+## [0.2.4] - 2026-04-20
+
+### Added
+- **BUG FIX:** `getEnvAsInt` in `src/adapters/process.ts` now treats empty string as invalid (throws `ProcessError` with `ENV_INVALID`) instead of returning 0. Test updated to match. (M6)
+
+## [0.2.3] - 2026-04-20
+
+### Added
+- **Filesystem adapter** (`src/adapters/fs.ts`): Provides `readText`, `writeAtomic`, `remove`, `exists`, `ensureDir` operations. Atomic writes use temp-file + rename pattern. Symlink following is rejected. Optional root restriction prevents path escape. All errors are typed via `FsError` with discriminated `FsErrorCode`. (M5)
+
 ## [0.2.2] - 2026-04-20
 
 ### Added
 - **Domain types** (`src/lib/domain/types.ts`): BwItem, BwFolder, BwLoginUri, BwLogin zod schemas with `.passthrough()` for round-trip safety. ItemType enum. BwErrorCode discriminated error type with `makeBwError` constructor. (M4)
+
 ## [0.2.1] - 2026-04-19
 
 ### Added
