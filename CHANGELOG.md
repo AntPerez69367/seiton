@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.5] - 2026-04-21
+
+### Added
+- Milestone 13: Created GitHub Actions workflow to build and deploy the Docusaurus site from `website/` to GitHub Pages. (M13)
 ## [0.3.4] - 2026-04-21
 
 ### Added
