@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
+
+import { z } from 'zod';
+
 import { configDiscoveryStack, type ConfigPathOptions } from './paths.js';
 import { parseConfig, type Config } from './schema.js';
-import { z } from 'zod';
 import type { Logger } from '../adapters/logging.js';
 
 export class ConfigError extends Error {
