@@ -7,11 +7,13 @@ import type { BwAdapter } from '../lib/bw.js';
 import type { Finding } from '../lib/domain/finding.js';
 import type { PendingOp } from '../lib/domain/pending.js';
 import { ExitCode } from '../exit-codes.js';
+import { VERSION } from '../version.js';
 import { runPreflight } from './preflight.js';
 import { applyOps } from './apply.js';
-import { collectOpsFromFindings } from '../ui/review-loop.js';
+import { collectOpsFromFindings, interactiveReview } from '../ui/review-loop.js';
 import { savePendingOps, resolvePendingPath } from './pending-io.js';
 import { registerCleanup } from '../core/signals.js';
+import { createPromptAdapter, type PromptAdapter } from '../ui/prompts.js';
 
 export interface AuditOptions {
   config: Config;
@@ -62,36 +64,50 @@ async function executeAuditPipeline(
   setPendingOps: (ops: PendingOp[]) => void,
 ): Promise<never> {
   const { config, bw, fs, clock, proc, logger, dryRun, cliSkipCategories, cliLimit } = opts;
+  const prompt = createPromptAdapter(config.ui.prompt_style);
+
+  prompt.intro(`seiton v${VERSION} — vault audit`);
 
   logger.info('audit: preflight');
+  const preflightSpin = prompt.startSpinner('Running preflight checks…');
   const preflight = await runPreflight(bw, logger);
   if (!preflight.ok) {
+    preflightSpin.error('Preflight failed');
+    prompt.cancelled();
     const exitCode = mapPreflightExit(preflight.error.code);
     process.stderr.write(`seiton: audit: ${preflight.error.message}\n`);
     return proc.exit(exitCode);
   }
+  preflightSpin.stop(`Preflight passed (bw ${preflight.data.bwVersion})`);
 
   logger.info('audit: fetching vault', { bwVersion: preflight.data.bwVersion });
+  const fetchSpin = prompt.startSpinner('Fetching vault…');
   const [itemsResult, foldersResult] = await Promise.all([
     bw.listItems(session),
     bw.listFolders(session),
   ]);
 
   if (!itemsResult.ok) {
+    fetchSpin.error('Failed to fetch items');
+    prompt.cancelled();
     process.stderr.write(`seiton: audit: failed to fetch items: ${itemsResult.error.message}\n`);
     return proc.exit(ExitCode.MALFORMED_BW_OUTPUT);
   }
   if (!foldersResult.ok) {
+    fetchSpin.error('Failed to fetch folders');
+    prompt.cancelled();
     process.stderr.write(`seiton: audit: failed to fetch folders: ${foldersResult.error.message}\n`);
     return proc.exit(ExitCode.MALFORMED_BW_OUTPUT);
   }
 
   const items = itemsResult.data;
   const _folders = foldersResult.data;
-  logger.info('audit: vault fetched', { itemCount: items.length, folderCount: _folders.length });
+  fetchSpin.stop(`Fetched ${items.length} items, ${_folders.length} folders`);
 
   logger.info('audit: analyzing');
+  const analyzeSpin = prompt.startSpinner('Analyzing vault…');
   const findings = analyzeItems(items, config);
+  analyzeSpin.stop(`Found ${findings.length} findings`);
 
   const skipCategories = [
     ...config.audit.skip_categories,
@@ -99,10 +115,13 @@ async function executeAuditPipeline(
   ];
   const limitPerCategory = cliLimit ?? config.audit.limit_per_category;
 
-  const reviewResult = collectOpsFromFindings(findings, {
+  const reviewResult = await runReview(findings, {
     skipCategories,
     limitPerCategory,
     logger,
+    prompt,
+    maskChar: config.ui.mask_character,
+    dryRun,
   });
 
   setPendingOps(reviewResult.ops);
@@ -114,38 +133,72 @@ async function executeAuditPipeline(
   });
 
   if (dryRun) {
-    process.stderr.write(`seiton: audit: dry-run complete. ${reviewResult.ops.length} operations would be applied.\n`);
+    prompt.logInfo(`Dry-run complete. ${reviewResult.ops.length} operations would be applied.`);
+    prompt.outro('Dry-run finished — no changes made.');
     return proc.exit(ExitCode.SUCCESS);
   }
 
   if (reviewResult.ops.length === 0) {
-    process.stderr.write('seiton: audit: no findings require action. Vault is clean.\n');
+    prompt.logSuccess('No findings require action. Vault is clean.');
+    prompt.outro('Audit complete — nothing to do.');
     return proc.exit(ExitCode.SUCCESS);
   }
 
   logger.info('audit: applying operations', { count: reviewResult.ops.length });
+  const applySpin = prompt.startSpinner(`Applying ${reviewResult.ops.length} operations…`);
   const applyResult = await applyOps(reviewResult.ops, session, bw, logger);
 
   if (applyResult.failed.length > 0 || applyResult.remaining.length > 0) {
+    applySpin.error(`${applyResult.applied} applied, ${applyResult.failed.length} failed`);
     const persist = [...applyResult.failed, ...applyResult.remaining];
     await savePendingOps(persist, pendingPath, fs, clock, logger);
     setPendingOps([]);
-    process.stderr.write(
-      `seiton: audit: ${applyResult.applied} applied, ${applyResult.failed.length} failed. Remaining saved to pending queue.\n`,
-    );
+    prompt.outro('Audit finished with errors. Remaining ops saved to pending queue.');
     return proc.exit(ExitCode.GENERAL_ERROR);
   }
 
+  applySpin.stop(`${applyResult.applied} operations applied`);
   setPendingOps([]);
 
   logger.info('audit: syncing vault');
   const syncResult = await bw.sync(session);
   if (!syncResult.ok) {
     logger.warn('audit: sync failed (non-fatal)', { error: syncResult.error.message });
+    prompt.logWarning('Vault sync failed (non-fatal). Changes are local until next sync.');
   }
 
-  process.stderr.write(`seiton: audit: complete. ${applyResult.applied} operations applied.\n`);
+  prompt.outro(`Audit complete. ${applyResult.applied} operations applied.`);
   return proc.exit(ExitCode.SUCCESS);
+}
+
+interface RunReviewOpts {
+  skipCategories: readonly string[];
+  limitPerCategory: number | null;
+  logger?: Logger;
+  prompt: PromptAdapter;
+  maskChar: string;
+  dryRun: boolean;
+}
+
+async function runReview(
+  findings: readonly Finding[],
+  opts: RunReviewOpts,
+): Promise<{ ops: PendingOp[]; reviewed: number; skipped: number }> {
+  if (opts.dryRun) {
+    return collectOpsFromFindings(findings, {
+      skipCategories: opts.skipCategories,
+      limitPerCategory: opts.limitPerCategory,
+      logger: opts.logger,
+    });
+  }
+
+  return interactiveReview(findings, {
+    skipCategories: opts.skipCategories,
+    limitPerCategory: opts.limitPerCategory,
+    logger: opts.logger,
+    prompt: opts.prompt,
+    maskChar: opts.maskChar,
+  });
 }
 
 function analyzeItems(items: readonly import('../lib/domain/types.js').BwItem[], _config: Config): Finding[] {

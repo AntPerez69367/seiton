@@ -249,6 +249,7 @@ describe('runAudit', () => {
         bw: makeFakeAdapter({
           listItems: async () => ({ ok: true, data: items }),
         }),
+        dryRun: true,
       }));
       assert.equal(exit.code, ExitCode.SUCCESS);
     });
