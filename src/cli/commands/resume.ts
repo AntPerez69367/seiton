@@ -136,7 +136,7 @@ export async function runResumeCli(argv: string[]): Promise<void> {
     prompt.outro(
       result.savedRemaining
         ? 'Resume finished with errors. Remaining ops saved.'
-        : 'Resume finished with errors. Failed to persist remaining ops — see log for recovery data.',
+        : 'Resume finished with errors. Failed to persist remaining ops — recovery data printed above.',
     );
     process.exit(ExitCode.GENERAL_ERROR);
   }

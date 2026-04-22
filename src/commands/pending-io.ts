@@ -36,6 +36,13 @@ export async function savePendingOps(
       error: message,
       ops,
     });
+    const banner = [
+      '',
+      `seiton: failed to save pending queue to ${pendingPath}: ${message}`,
+      'seiton: recover your pending operations from the JSON below:',
+      content,
+    ].join('\n');
+    process.stderr.write(banner);
     return false;
   }
 
