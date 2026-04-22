@@ -6,11 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.3.8] - 2026-04-21
+
+### Added
+- Analyzed all AI code review comments from greptile.txt (1 comment) and code-rabbit.txt (~22 comments). Fixed 17 valid issues, skipped 5 that were editorial/architectural/over-testing concerns. Deleted review files after processing.
+
+### Changed
+- Renamed `ExitCode.MALFORMED_INPUT` to `ExitCode.INTERNAL_ERROR` (value unchanged: 2) to better reflect its use for unexpected runtime errors rather than user-supplied malformed input.
 
 ## [0.3.7] - 2026-04-21
 
 ### Added
-- Resolved all unresolved architectural drift observations in `.tekhton/DRIFT_LOG.md` by moving assessed-and-accepted items to Resolved and fixing CLAUDE.md layout drift:
+- Resolved all unresolved architectural drift observations in `.tekhton/DRIFT_LOG.md` by moving assessed-and-accepted items to Resolved and fixing CLAUDE.md layout drift.
 ## [0.3.6] - 2026-04-21
 
 ### Added
@@ -24,8 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Milestone 12: Implemented all remaining CLI commands. Every command listed in the CLAUDE.md repository layout under `src/commands/` now has a corresponding implementation file. All subcommands are routed through dedicated CLI wrappers in `src/cli/commands/` and dispatch from the main router in `src/bw-organize.ts`. (M12)
-
-### Added
 - **`seiton resume`** command: loads pending operations from a prior interrupted audit and applies them after interactive confirmation. (M12)
 - **`seiton discard`** command: deletes the saved pending-ops queue. (M12)
 - **`seiton report`** command: read-only vault analysis supporting `--json` output with redacted secrets. (M12)
