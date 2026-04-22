@@ -13,6 +13,7 @@ export async function applyOps(
   session: string,
   bw: BwAdapter,
   logger?: Logger,
+  onApplied?: (op: PendingOp) => void,
 ): Promise<ApplyResult> {
   const remaining = [...ops];
   const failed: PendingOp[] = [];
@@ -34,6 +35,7 @@ export async function applyOps(
     if (result.ok) {
       folderIdMap.set(op.folderName, result.data);
       applied++;
+      onApplied?.(op);
     } else {
       logger?.error('apply: create folder failed', { folderName: op.folderName, error: result.error.message });
       failed.push(op);
@@ -68,6 +70,7 @@ export async function applyOps(
     const result = await bw.editItem(session, op.itemId, encoded);
     if (result.ok) {
       applied++;
+      onApplied?.(op);
     } else {
       const persistOp = folderId !== op.folderId ? { ...op, folderId } : op;
       logger?.error('apply: assign folder failed', { itemId: op.itemId, error: result.error.message });
@@ -83,6 +86,7 @@ export async function applyOps(
     const result = await bw.deleteItem(session, op.itemId);
     if (result.ok) {
       applied++;
+      onApplied?.(op);
     } else {
       logger?.error('apply: delete item failed', { itemId: op.itemId, error: result.error.message });
       failed.push(op);

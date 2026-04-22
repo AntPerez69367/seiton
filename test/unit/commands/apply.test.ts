@@ -79,4 +79,41 @@ describe('applyOps', () => {
     assert.equal(result.applied, 0);
     assert.equal(result.failed.length, 1);
   });
+
+  it('invokes onApplied callback for successful operations', async () => {
+    const ops: PendingOp[] = [
+      { kind: 'create_folder', folderName: 'Folder1' },
+      { kind: 'delete_item', itemId: 'item-1' },
+      { kind: 'assign_folder', itemId: 'item-2', folderId: 'folder-1', folderName: 'Folder2' },
+    ];
+    const appliedOps: PendingOp[] = [];
+    const bw = makeFakeAdapter();
+    const result = await applyOps(ops, 'session', bw, undefined, (op) => {
+      appliedOps.push(op);
+    });
+    assert.equal(appliedOps.length, 3);
+    assert.equal(result.applied, 3);
+    // Operations are processed by type: create_folder, then assign_folder, then delete_item
+    assert.deepEqual(appliedOps[0], ops[0]); // create_folder
+    assert.deepEqual(appliedOps[1], ops[2]); // assign_folder
+    assert.deepEqual(appliedOps[2], ops[1]); // delete_item
+  });
+
+  it('does not invoke onApplied for failed operations', async () => {
+    const ops: PendingOp[] = [
+      { kind: 'create_folder', folderName: 'Folder1' },
+      { kind: 'delete_item', itemId: 'item-1' },
+    ];
+    const appliedOps: PendingOp[] = [];
+    const bw = makeFakeAdapter({
+      createFolder: async () => ({ ok: false, error: makeBwError(BwErrorCode.UNKNOWN, 'fail') }),
+      deleteItem: async () => ({ ok: false, error: makeBwError(BwErrorCode.UNKNOWN, 'fail') }),
+    });
+    const result = await applyOps(ops, 'session', bw, undefined, (op) => {
+      appliedOps.push(op);
+    });
+    assert.equal(appliedOps.length, 0);
+    assert.equal(result.applied, 0);
+    assert.equal(result.failed.length, 2);
+  });
 });

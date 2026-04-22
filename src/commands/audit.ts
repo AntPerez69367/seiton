@@ -161,11 +161,15 @@ async function executeAuditPipeline(
     return proc.exit(ExitCode.SUCCESS);
   }
 
-  setPendingOps(reviewResult.ops);
+  const pendingSet = new Set(reviewResult.ops);
+  setPendingOps([...pendingSet]);
 
   logger.info('audit: applying operations', { count: reviewResult.ops.length });
   const applySpin = prompt.startSpinner(`Applying ${reviewResult.ops.length} operations…`);
-  const applyResult = await applyOps(reviewResult.ops, session, bw, logger);
+  const applyResult = await applyOps(reviewResult.ops, session, bw, logger, (applied) => {
+    pendingSet.delete(applied);
+    setPendingOps([...pendingSet]);
+  });
 
   if (applyResult.failed.length > 0 || applyResult.remaining.length > 0) {
     applySpin.error(`${applyResult.applied} applied, ${applyResult.failed.length} failed, ${applyResult.remaining.length} remaining`);
