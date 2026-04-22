@@ -69,8 +69,9 @@ export async function applyOps(
     if (result.ok) {
       applied++;
     } else {
+      const persistOp = folderId !== op.folderId ? { ...op, folderId } : op;
       logger?.error('apply: assign folder failed', { itemId: op.itemId, error: result.error.message });
-      failed.push(op);
+      failed.push(persistOp);
     }
   }
 

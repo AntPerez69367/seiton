@@ -168,7 +168,7 @@ async function executeAuditPipeline(
   const applyResult = await applyOps(reviewResult.ops, session, bw, logger);
 
   if (applyResult.failed.length > 0 || applyResult.remaining.length > 0) {
-    applySpin.error(`${applyResult.applied} applied, ${applyResult.failed.length} failed`);
+    applySpin.error(`${applyResult.applied} applied, ${applyResult.failed.length} failed, ${applyResult.remaining.length} remaining`);
     const persist = [...applyResult.failed, ...applyResult.remaining];
     await savePendingOps(persist, pendingPath, fs, clock, logger);
     setPendingOps([]);
