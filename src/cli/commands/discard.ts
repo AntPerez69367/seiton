@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { ExitCode } from '../../exit-codes.js';
 import { applyNoColor } from '../no-color.js';
-import { loadConfig } from '../../config/loader.js';
+import { loadConfigOrExit } from '../../config/loader.js';
 import { createLogger, createNoopLogger } from '../../adapters/logging.js';
 import { createSystemClock } from '../../adapters/clock.js';
 import { createFsAdapter } from '../../adapters/fs.js';
@@ -63,11 +63,11 @@ export async function runDiscardCli(argv: string[]): Promise<void> {
     ? createNoopLogger()
     : createLogger({ format: 'text', level: verboseCount >= 2 ? 'debug' : 'info', clock });
 
-  const config = await loadConfig({
+  const config = await loadConfigOrExit({
     cliConfigPath: args.values.config as string | undefined,
     envConfigPath: process.env['SEITON_CONFIG'],
     logger: log,
-  });
+  }, 'discard');
 
   const prompt = createPromptAdapter(config.ui.prompt_style);
   prompt.intro(`seiton discard v${VERSION}`);

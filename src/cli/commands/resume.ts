@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { ExitCode } from '../../exit-codes.js';
 import { applyNoColor } from '../no-color.js';
-import { loadConfig } from '../../config/loader.js';
+import { loadConfigOrExit } from '../../config/loader.js';
 import { createLogger, createNoopLogger } from '../../adapters/logging.js';
 import { createSystemClock } from '../../adapters/clock.js';
 import { createProcessAdapter } from '../../adapters/process.js';
@@ -86,11 +86,11 @@ export async function runResumeCli(argv: string[]): Promise<void> {
     process.exit(ExitCode.NO_PERMISSION);
   }
 
-  const config = await loadConfig({
+  const config = await loadConfigOrExit({
     cliConfigPath: args.values.config as string | undefined,
     envConfigPath: process.env['SEITON_CONFIG'],
     logger: log,
-  });
+  }, 'resume');
 
   const prompt = createPromptAdapter(config.ui.prompt_style);
   prompt.intro(`seiton resume v${VERSION}`);

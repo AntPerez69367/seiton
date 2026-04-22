@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadConfig, applyEnvOverrides, validateConfig, ConfigError } from '../../../src/config/loader.js';
+import { loadConfig, loadConfigOrExit, applyEnvOverrides, validateConfig, ConfigError } from '../../../src/config/loader.js';
 
 describe('loadConfig', () => {
   let tmp: string;
@@ -334,5 +334,73 @@ describe('validateConfig', () => {
         return true;
       },
     );
+  });
+});
+
+describe('loadConfigOrExit', () => {
+  let tmp: string;
+  const savedEnv: Record<string, string | undefined> = {};
+  const origExit = process.exit;
+  const origStderrWrite = process.stderr.write.bind(process.stderr);
+
+  beforeEach(async () => {
+    tmp = await mkdtemp(join(tmpdir(), 'seiton-loadorexit-'));
+    savedEnv['HOME'] = process.env['HOME'];
+    savedEnv['XDG_CONFIG_HOME'] = process.env['XDG_CONFIG_HOME'];
+    process.env['HOME'] = tmp;
+    delete process.env['XDG_CONFIG_HOME'];
+  });
+
+  afterEach(() => {
+    if (savedEnv['HOME'] === undefined) delete process.env['HOME'];
+    else process.env['HOME'] = savedEnv['HOME'];
+    if (savedEnv['XDG_CONFIG_HOME'] === undefined) delete process.env['XDG_CONFIG_HOME'];
+    else process.env['XDG_CONFIG_HOME'] = savedEnv['XDG_CONFIG_HOME'];
+    process.exit = origExit;
+    process.stderr.write = origStderrWrite;
+  });
+
+  it('returns the config on success', async () => {
+    const cfg = await loadConfigOrExit({ cliConfigPath: undefined, envConfigPath: undefined });
+    assert.equal(cfg.version, 1);
+  });
+
+  it('writes prefixed stderr and exits USAGE on ConfigError', async () => {
+    let captured = '';
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      captured += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf-8');
+      return true;
+    }) as typeof process.stderr.write;
+    process.exit = ((code?: number) => {
+      throw new Error(`__exit_${code}__`);
+    }) as typeof process.exit;
+
+    const cfgPath = join(tmp, 'bad.json');
+    await writeFile(cfgPath, '{not json');
+
+    await assert.rejects(
+      () => loadConfigOrExit({ cliConfigPath: cfgPath }, 'audit'),
+      (err: unknown) => err instanceof Error && err.message === '__exit_64__',
+    );
+    assert.match(captured, /^seiton: audit:/);
+    assert.match(captured, /invalid JSON/);
+  });
+
+  it('omits command name from prefix when not supplied', async () => {
+    let captured = '';
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      captured += typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf-8');
+      return true;
+    }) as typeof process.stderr.write;
+    process.exit = ((code?: number) => {
+      throw new Error(`__exit_${code}__`);
+    }) as typeof process.exit;
+
+    const cfgPath = join(tmp, 'bad.json');
+    await writeFile(cfgPath, '{not json');
+
+    await assert.rejects(() => loadConfigOrExit({ cliConfigPath: cfgPath }));
+    assert.match(captured, /^seiton: /);
+    assert.ok(!/^seiton: [a-z]+:/.test(captured));
   });
 });

@@ -1,8 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { loadConfig, ConfigError } from '../../config/loader.js';
-import type { Config } from '../../config/schema.js';
+import { loadConfigOrExit } from '../../config/loader.js';
 import { redactConfig } from '../../config/schema.js';
 import { configDiscoveryStack } from '../../config/paths.js';
 import { ExitCode } from '../../exit-codes.js';
@@ -88,22 +87,14 @@ async function runConfigShow(argv: string[]): Promise<void> {
 
   log.info('config show command started');
   log.debug('dispatching config show');
-  try {
-    const config = await loadConfig({
-      cliConfigPath: args.configPath,
-      envConfigPath: process.env['SEITON_CONFIG'],
-      logger: log,
-    });
-    const redacted = redactConfig(config);
-    process.stdout.write(JSON.stringify(redacted, null, 2) + '\n');
-    process.exit(ExitCode.SUCCESS);
-  } catch (err: unknown) {
-    if (err instanceof ConfigError) {
-      process.stderr.write(`seiton: ${err.message}\n`);
-      process.exit(ExitCode.USAGE);
-    }
-    throw err;
-  }
+  const config = await loadConfigOrExit({
+    cliConfigPath: args.configPath,
+    envConfigPath: process.env['SEITON_CONFIG'],
+    logger: log,
+  });
+  const redacted = redactConfig(config);
+  process.stdout.write(`${JSON.stringify(redacted, null, 2)}\n`);
+  process.exit(ExitCode.SUCCESS);
 }
 
 async function runConfigGet(argv: string[]): Promise<void> {
@@ -116,20 +107,11 @@ async function runConfigGet(argv: string[]): Promise<void> {
   }
 
   const keyPath = args.positionals[0]!;
-  let config: Config;
-  try {
-    config = await loadConfig({
-      cliConfigPath: args.configPath,
-      envConfigPath: process.env['SEITON_CONFIG'],
-      logger: log,
-    });
-  } catch (err: unknown) {
-    if (err instanceof ConfigError) {
-      process.stderr.write(`seiton: config get: ${err.message}\n`);
-      process.exit(ExitCode.USAGE);
-    }
-    throw err;
-  }
+  const config = await loadConfigOrExit({
+    cliConfigPath: args.configPath,
+    envConfigPath: process.env['SEITON_CONFIG'],
+    logger: log,
+  }, 'config get');
 
   const result = configGet(config, keyPath);
   if (!result.ok) {

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { configDiscoveryStack, type ConfigPathOptions } from './paths.js';
 import { parseConfig, type Config } from './schema.js';
 import type { Logger } from '../adapters/logging.js';
+import { ExitCode } from '../exit-codes.js';
 
 export class ConfigError extends Error {
   readonly code: string;
@@ -26,6 +27,22 @@ export interface LoadedConfig {
 
 export async function loadConfig(opts: LoadConfigOptions = {}): Promise<Config> {
   return (await loadConfigWithPath(opts)).config;
+}
+
+export async function loadConfigOrExit(
+  opts: LoadConfigOptions,
+  commandName?: string,
+): Promise<Config> {
+  try {
+    return await loadConfig(opts);
+  } catch (err: unknown) {
+    if (err instanceof ConfigError) {
+      const prefix = commandName ? `seiton: ${commandName}: ` : 'seiton: ';
+      process.stderr.write(`${prefix}${err.message}\n`);
+      process.exit(ExitCode.USAGE);
+    }
+    throw err;
+  }
 }
 
 export async function loadConfigWithPath(opts: LoadConfigOptions = {}): Promise<LoadedConfig> {

@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { ExitCode } from '../../exit-codes.js';
 import { applyNoColor } from '../no-color.js';
-import { loadConfig } from '../../config/loader.js';
+import { loadConfigOrExit } from '../../config/loader.js';
 import { createLogger, createNoopLogger } from '../../adapters/logging.js';
 import { createSystemClock } from '../../adapters/clock.js';
 import { createProcessAdapter } from '../../adapters/process.js';
@@ -74,11 +74,11 @@ export async function runAuditCli(argv: string[]): Promise<void> {
 
   const dryRun = Boolean(args.values['dry-run']);
 
-  const config = await loadConfig({
+  const config = await loadConfigOrExit({
     cliConfigPath: args.values.config as string | undefined,
     envConfigPath: process.env['SEITON_CONFIG'],
     logger: log,
-  });
+  }, 'audit');
 
   const proc = createProcessAdapter(process.env, (code) => process.exit(code), log);
   const homeDir = process.env['HOME'] ?? process.env['USERPROFILE'] ?? '/';
