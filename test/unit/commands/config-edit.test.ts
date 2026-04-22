@@ -140,7 +140,7 @@ describe('configEdit', () => {
     }
   });
 
-  it('propagates non-ENOENT readFile errors from ensureConfigFileExists', async () => {
+  it('returns a clean error for non-ENOENT readFile failures from ensureConfigFileExists', async () => {
     const configPath = join(tempDir, 'config.json');
     process.env['EDITOR'] = nodeEditor(exitZeroPath);
     const dir = dirname(configPath);
@@ -148,10 +148,12 @@ describe('configEdit', () => {
     await chmod(dir, 0o000);
 
     try {
-      await assert.rejects(
-        async () => { await configEdit(configPath); },
-        (err: unknown) => (err as { code?: string } | null)?.code === 'EACCES',
-      );
+      const result = await configEdit(configPath);
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.ok(result.error.includes('Failed to read config'));
+        assert.ok(result.error.includes('EACCES') || result.error.toLowerCase().includes('permission'));
+      }
     } finally {
       await chmod(dir, 0o755);
     }

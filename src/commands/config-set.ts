@@ -1,6 +1,5 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { parseConfig } from '../config/schema.js';
+import { readConfigFile, writeConfigFile } from '../config/io.js';
 
 export type ConfigSetResult =
   | { ok: true }
@@ -12,18 +11,14 @@ export async function configSet(
   value: string | undefined,
   unset: boolean,
 ): Promise<ConfigSetResult> {
+  const read = await readConfigFile(configFilePath);
   let raw: Record<string, unknown>;
-  try {
-    const content = await readFile(configFilePath, 'utf-8');
-    raw = JSON.parse(content) as Record<string, unknown>;
-  } catch (err: unknown) {
-    const code = (err as { code?: string } | null)?.code;
-    if (code === 'ENOENT') {
-      raw = { version: 1 };
-    } else {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { ok: false, error: `Failed to read config: ${msg}` };
-    }
+  if (read.ok) {
+    raw = read.data;
+  } else if (read.code === 'NOT_FOUND') {
+    raw = { version: 1 };
+  } else {
+    return { ok: false, error: read.error };
   }
 
   const parts = keyPath.split('.');
@@ -43,15 +38,7 @@ export async function configSet(
     return { ok: false, error: `Invalid config after change: ${path}: ${issue?.message}` };
   }
 
-  const dir = dirname(configFilePath);
-  try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(configFilePath, `${JSON.stringify(raw, null, 2)}\n`, { mode: 0o600 });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: `Failed to write config: ${msg}` };
-  }
-  return { ok: true };
+  return writeConfigFile(configFilePath, raw);
 }
 
 function convertValue(raw: string): unknown {

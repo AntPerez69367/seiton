@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
-import { writeFile, readFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { parseConfig } from '../config/schema.js';
+import { writeConfigFile } from '../config/io.js';
 
 export type ConfigEditResult =
   | { ok: true }
@@ -12,7 +12,8 @@ export async function configEdit(configFilePath: string): Promise<ConfigEditResu
   const editorEnv = rawEditor || 'vi';
   const [editor, ...editorArgs] = editorEnv.split(/\s+/);
 
-  await ensureConfigFileExists(configFilePath);
+  const ensured = await ensureConfigFileExists(configFilePath);
+  if (!ensured.ok) return ensured;
 
   return new Promise<ConfigEditResult>((resolve) => {
     let child;
@@ -54,18 +55,16 @@ export async function configEdit(configFilePath: string): Promise<ConfigEditResu
   });
 }
 
-async function ensureConfigFileExists(configFilePath: string): Promise<void> {
+async function ensureConfigFileExists(configFilePath: string): Promise<ConfigEditResult> {
   try {
     await readFile(configFilePath, 'utf-8');
+    return { ok: true };
   } catch (err: unknown) {
     const code = (err as { code?: string } | null)?.code;
-    if (code === 'ENOENT') {
-      const dir = dirname(configFilePath);
-      await mkdir(dir, { recursive: true });
-      const template = JSON.stringify({ version: 1 }, null, 2) + '\n';
-      await writeFile(configFilePath, template, { mode: 0o600 });
-    } else {
-      throw err;
+    if (code !== 'ENOENT') {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { ok: false, error: `Failed to read config: ${msg}` };
     }
+    return writeConfigFile(configFilePath, { version: 1 });
   }
 }

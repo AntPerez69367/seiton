@@ -2,6 +2,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadConfig, ConfigError } from '../../config/loader.js';
+import type { Config } from '../../config/schema.js';
 import { redactConfig } from '../../config/schema.js';
 import { configDiscoveryStack } from '../../config/paths.js';
 import { ExitCode } from '../../exit-codes.js';
@@ -115,11 +116,20 @@ async function runConfigGet(argv: string[]): Promise<void> {
   }
 
   const keyPath = args.positionals[0]!;
-  const config = await loadConfig({
-    cliConfigPath: args.configPath,
-    envConfigPath: process.env['SEITON_CONFIG'],
-    logger: log,
-  });
+  let config: Config;
+  try {
+    config = await loadConfig({
+      cliConfigPath: args.configPath,
+      envConfigPath: process.env['SEITON_CONFIG'],
+      logger: log,
+    });
+  } catch (err: unknown) {
+    if (err instanceof ConfigError) {
+      process.stderr.write(`seiton: config get: ${err.message}\n`);
+      process.exit(ExitCode.USAGE);
+    }
+    throw err;
+  }
 
   const result = configGet(config, keyPath);
   if (!result.ok) {
