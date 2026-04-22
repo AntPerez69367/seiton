@@ -232,8 +232,10 @@ async function runReview(
 function mapPreflightExit(code: string): ExitCode {
   switch (code) {
     case 'BW_NOT_FOUND': return ExitCode.UNAVAILABLE;
+    case 'BW_VERSION_FAILED': return ExitCode.UNAVAILABLE;
     case 'VAULT_LOCKED': return ExitCode.NO_PERMISSION;
     case 'SESSION_MISSING': return ExitCode.NO_PERMISSION;
+    case 'STATUS_FAILED': return ExitCode.GENERAL_ERROR;
     default: return ExitCode.GENERAL_ERROR;
   }
 }

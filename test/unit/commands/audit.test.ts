@@ -127,6 +127,15 @@ describe('runAudit', () => {
       assert.equal(exit.code, ExitCode.UNAVAILABLE);
     });
 
+    it('exits 69 when bw version fails (not just not found)', async () => {
+      const exit = await runAndCatch(makeOpts({
+        bw: makeFakeAdapter({
+          getVersion: async () => ({ ok: false, error: makeBwError(BwErrorCode.UNKNOWN, 'version check failed') }),
+        }),
+      }));
+      assert.equal(exit.code, ExitCode.UNAVAILABLE);
+    });
+
     it('exits 77 when vault is locked', async () => {
       const exit = await runAndCatch(makeOpts({
         bw: makeFakeAdapter({
@@ -146,6 +155,18 @@ describe('runAudit', () => {
         }),
       }));
       assert.equal(exit.code, ExitCode.NO_PERMISSION);
+    });
+
+    it('exits 1 when status check fails (not locked/missing session)', async () => {
+      const exit = await runAndCatch(makeOpts({
+        bw: makeFakeAdapter({
+          getStatus: async () => ({
+            ok: false,
+            error: makeBwError(BwErrorCode.UNKNOWN, 'status command failed'),
+          }),
+        }),
+      }));
+      assert.equal(exit.code, ExitCode.GENERAL_ERROR);
     });
   });
 
@@ -302,13 +323,11 @@ describe('runAudit', () => {
         },
       };
 
-      let removeWasCalled = false;
       const mockFs: FsAdapter & { written: Map<string, { content: string; mode: number }> } = {
         written: new Map(),
         readText: async () => '',
         writeAtomic: async (path, content, mode = 0o600) => { mockFs.written.set(path, { content, mode }); },
         remove: async () => {
-          removeWasCalled = true;
           const err = new Error('Permission denied') as NodeJS.ErrnoException;
           err.code = 'EACCES';
           throw err;

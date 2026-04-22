@@ -29,6 +29,7 @@ export function createBwAdapter(bwBinary?: string | null, logger?: Logger): BwAd
     try {
       const { stdout } = await execFileAsync(bin, args, {
         timeout: 30_000,
+        maxBuffer: 10 * 1024 * 1024,
         env: { ...process.env, ...env },
       });
       return { ok: true, data: stdout };
@@ -40,10 +41,10 @@ export function createBwAdapter(bwBinary?: string | null, logger?: Logger): BwAd
       const e = err as { stderr?: string; code?: number; message?: string };
       const stderr = e.stderr ?? '';
       const exitCode = typeof e.code === 'number' ? e.code : null;
-      if (stderr.includes('locked') || stderr.includes('Vault is locked')) {
+      if (/\bVault is locked\b/i.test(stderr)) {
         return { ok: false, error: makeBwError(BwErrorCode.VAULT_LOCKED, 'Vault is locked', exitCode, stderr) };
       }
-      if (stderr.includes('not logged in') || stderr.includes('session key')) {
+      if (/\bnot logged in\b/i.test(stderr) || /\bsession key.*not found\b/i.test(stderr)) {
         return { ok: false, error: makeBwError(BwErrorCode.SESSION_MISSING, 'Session invalid', exitCode, stderr) };
       }
       return { ok: false, error: makeBwError(BwErrorCode.UNKNOWN, e.message ?? 'bw command failed', exitCode, stderr) };
