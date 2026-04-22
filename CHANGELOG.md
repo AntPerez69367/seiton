@@ -7,64 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.10] - 2026-04-22
-
-### Added
-- Analyzed all review comments from greptile.txt (2 comments) and code-rabbit.txt (~40 comments including duplicates). Many issues were already fixed in prior commits. Applied 8 fixes for the remaining valid issues:
-## [0.3.9] - 2026-04-21
-
+## [0.3.8] - 2026-04-21
 ### Added
 - **Note 1** (audit.ts bare catch): Narrowed bare `catch` at `src/commands/audit.ts:184` to only ignore ENOENT/NOT_FOUND errors. Non-matching errors are now logged via `logger.debug('audit: pending file removal failed', ...)`. Satisfies Non-Negotiable Rule #10.
+
+
+### Changed
+- Renamed `ExitCode.MALFORMED_INPUT` to `ExitCode.INTERNAL_ERROR` (value unchanged: 2) to better reflect its use for unexpected runtime errors rather than user-supplied malformed input.
 
 ### Fixed
 - Narrowed bare `catch` in `src/commands/audit.ts` pending-file removal to only ignore ENOENT/NOT_FOUND; non-ENOENT errors now logged via `logger.debug`.
 - `ensureConfigFileExists` in `src/commands/config-edit.ts` now re-throws non-ENOENT errors instead of silently swallowing them.
 - Expanded `UNSAFE_PATTERNS` in `src/adapters/logging.ts` to redact `*_CREDENTIAL*`, `*_AUTH`, `*API_KEY*`, and `*PASSPHRASE` context keys (defense-in-depth).
-
-## [0.3.8] - 2026-04-21
-
-### Added
-- Analyzed all AI code review comments from greptile.txt (1 comment) and code-rabbit.txt (~22 comments). Fixed 17 valid issues, skipped 5 that were editorial/architectural/over-testing concerns. Deleted review files after processing.
-
-### Changed
-- Renamed `ExitCode.MALFORMED_INPUT` to `ExitCode.INTERNAL_ERROR` (value unchanged: 2) to better reflect its use for unexpected runtime errors rather than user-supplied malformed input.
-
 ## [0.3.7] - 2026-04-21
 
 ### Added
-- Resolved all unresolved architectural drift observations in `.tekhton/DRIFT_LOG.md` by moving assessed-and-accepted items to Resolved and fixing CLAUDE.md layout drift.
-## [0.3.6] - 2026-04-21
-
-### Added
-- [MILESTONE 13 ✓] feat: Implement Milestone 13: Add GitHub Actions workflow to deploy Docusaurus
-
-## [0.3.5] - 2026-04-21
-
-### Added
-- Milestone 13: Created GitHub Actions workflow to build and deploy the Docusaurus site from `website/` to GitHub Pages. (M13)
-## [0.3.4] - 2026-04-21
-
-### Added
-- Milestone 12: Implemented all remaining CLI commands. Every command listed in the CLAUDE.md repository layout under `src/commands/` now has a corresponding implementation file. All subcommands are routed through dedicated CLI wrappers in `src/cli/commands/` and dispatch from the main router in `src/bw-organize.ts`. (M12)
-- **`seiton resume`** command: loads pending operations from a prior interrupted audit and applies them after interactive confirmation. (M12)
-- **`seiton discard`** command: deletes the saved pending-ops queue. (M12)
-- **`seiton report`** command: read-only vault analysis supporting `--json` output with redacted secrets. (M12)
-- **`seiton config get <key>`** subcommand: prints a specific configuration value. (M12)
-- **`seiton config set <key> <value>`** subcommand: sets a configuration value (supports `--unset`). (M12)
-- **`seiton config path`** subcommand: prints the active config file path. (M12)
-- **`seiton config edit`** subcommand: opens the config file in `$VISUAL`/`$EDITOR`. (M12)
-- **`seiton config reset`** subcommand: resets config to defaults (supports `--keep-custom-rules`, `--yes`). (M12)
-- CLI wrapper for `seiton audit` extracted from main entry point into `src/cli/commands/audit.ts`. (M12)
-- All subcommands support `--help` for command-specific usage information. (M12)
+- [MILESTONE 13] GitHub Actions workflow to build and deploy the Docusaurus site from `website/` to GitHub Pages. (M13)
+- [MILESTONE 12] Implemented all remaining CLI commands with dedicated CLI wrappers and `--help` support. (M12)
+  - **`seiton resume`**: loads pending operations from a prior interrupted audit and applies them after interactive confirmation.
+  - **`seiton discard`**: deletes the saved pending-ops queue.
+  - **`seiton report`**: read-only vault analysis supporting `--json` output with redacted secrets.
+  - **`seiton config get <key>`**: prints a specific configuration value.
+  - **`seiton config set <key> <value>`**: sets a configuration value (supports `--unset`).
+  - **`seiton config path`**: prints the active config file path.
+  - **`seiton config edit`**: opens the config file in `$VISUAL`/`$EDITOR`.
+  - **`seiton config reset`**: resets config to defaults (supports `--keep-custom-rules`, `--yes`).
+  - CLI wrapper for `seiton audit` extracted into `src/cli/commands/audit.ts`.
+- [MILESTONE 10/11] Analysis orchestrator, interactive review loop, Clack UI layer, password masking. (M10, M11)
+- Resolved all unresolved architectural drift observations in `.tekhton/DRIFT_LOG.md`.
 
 ### Changed
 - Main CLI router (`src/bw-organize.ts`) refactored to dispatch all subcommands to dedicated CLI wrappers. (M12)
 - `src/cli/commands/config.ts` expanded to route all config sub-subcommands (show, get, set, path, edit, reset). (M12)
-
-## [0.3.3] - 2026-04-21
-
-### Added
-- [MILESTONE 10 ✓] feat: implement milestone 10 (M11)
 ## [0.3.2] - 2026-04-21
 
 ### Added
