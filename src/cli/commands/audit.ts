@@ -7,6 +7,7 @@ import { createSystemClock } from '../../adapters/clock.js';
 import { createProcessAdapter } from '../../adapters/process.js';
 import { createFsAdapter } from '../../adapters/fs.js';
 import { createBwAdapter } from '../../lib/bw.js';
+import { installSignalHandlers } from '../../core/signals.js';
 import { runAudit } from '../../commands/audit.js';
 
 const AUDIT_HELP = `seiton audit — fetch, analyze, review findings, apply approved changes
@@ -68,6 +69,8 @@ export async function runAuditCli(argv: string[]): Promise<void> {
   const log = quiet || verboseCount === 0
     ? createNoopLogger()
     : createLogger({ format: 'text', level: verboseCount >= 2 ? 'debug' : 'info', clock });
+
+  installSignalHandlers(log);
 
   const dryRun = Boolean(args.values['dry-run']);
 
