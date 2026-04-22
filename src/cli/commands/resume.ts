@@ -9,6 +9,7 @@ import { createFsAdapter } from '../../adapters/fs.js';
 import { createBwAdapter } from '../../lib/bw.js';
 import { createPromptAdapter } from '../../ui/prompts.js';
 import { VERSION } from '../../version.js';
+import { homedir } from 'node:os';
 import { installSignalHandlers } from '../../core/signals.js';
 import { loadPendingOps, resumeApply } from '../../commands/resume.js';
 import type { PendingOp } from '../../lib/domain/pending.js';
@@ -112,7 +113,7 @@ export async function runResumeCli(argv: string[]): Promise<void> {
     process.exit(ExitCode.SUCCESS);
   }
 
-  const homeDir = process.env['HOME'] ?? process.env['USERPROFILE'] ?? '/';
+  const homeDir = process.env['HOME'] ?? process.env['USERPROFILE'] ?? homedir();
   const fsAdapter = createFsAdapter(homeDir, log);
   const bwAdapter = createBwAdapter(config.paths.bw_binary, log);
 
