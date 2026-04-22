@@ -2,6 +2,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadConfigOrExit } from '../../config/loader.js';
+import { readConfigFile } from '../../config/io.js';
 import { redactConfig } from '../../config/schema.js';
 import { configDiscoveryStack } from '../../config/paths.js';
 import { ExitCode } from '../../exit-codes.js';
@@ -177,7 +178,13 @@ async function runConfigEdit(argv: string[]): Promise<void> {
 
 async function runConfigReset(argv: string[]): Promise<void> {
   const args = parseConfigFlags(argv, 'reset');
-  const prompt = createPromptAdapter('clack');
+  const filePath = await resolveConfigFilePath(args.configPath);
+
+  const read = await readConfigFile(filePath);
+  const existingStyle = read.ok
+    ? (read.data['ui'] as Record<string, unknown> | undefined)?.['prompt_style']
+    : undefined;
+  const prompt = createPromptAdapter(existingStyle === 'plain' ? 'plain' : 'clack');
 
   if (!args.yes) {
     prompt.intro(`seiton config reset v${VERSION}`);
@@ -191,7 +198,6 @@ async function runConfigReset(argv: string[]): Promise<void> {
     }
   }
 
-  const filePath = await resolveConfigFilePath(args.configPath);
   const result = await configReset(filePath, args.keepCustomRules);
   if (!result.ok) {
     process.stderr.write(`seiton: config reset: ${result.error}\n`);
