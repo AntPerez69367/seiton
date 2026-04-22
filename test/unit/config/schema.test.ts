@@ -150,6 +150,11 @@ describe('ConfigSchema', () => {
     assert.equal(result.data.version, 1);
   });
 
+  it('rejects unknown $-prefixed keys other than $schema', () => {
+    const result = parseConfig({ version: 1, $other: 'value' });
+    assert.ok(!result.success);
+  });
+
   it('strips $schema key and allows other valid config', () => {
     const result = parseConfig({
       version: 1,

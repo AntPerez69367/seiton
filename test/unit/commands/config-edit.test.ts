@@ -83,4 +83,36 @@ describe('configEdit', () => {
     // Should succeed with the echo command
     assert.equal(result.ok, true);
   });
+
+  it('reports error when config file is not valid JSON after editing', async () => {
+    const configPath = join(tempDir, 'config.json');
+    process.env['EDITOR'] = 'true';
+    // First, create a config file with valid JSON
+    await configEdit(configPath);
+    // Now write invalid JSON to it
+    const { writeFile: writeFileFunc } = await import('node:fs/promises');
+    await writeFileFunc(configPath, 'not valid json {]', 'utf-8');
+    // Try to edit again with an editor that succeeds
+    const result = await configEdit(configPath);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.ok(result.error.includes('not valid JSON'));
+    }
+  });
+
+  it('reports error when config fails Zod schema validation after editing', async () => {
+    const configPath = join(tempDir, 'config.json');
+    process.env['EDITOR'] = 'true';
+    // First, create a valid config file
+    await configEdit(configPath);
+    // Now write valid JSON but invalid config (missing version)
+    const { writeFile: writeFileFunc } = await import('node:fs/promises');
+    await writeFileFunc(configPath, '{"core": {}}', 'utf-8');
+    // Try to edit again
+    const result = await configEdit(configPath);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.ok(result.error.includes('Config is invalid'));
+    }
+  });
 });

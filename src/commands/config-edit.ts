@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { parseConfig } from '../config/schema.js';
 
 export type ConfigEditResult =
   | { ok: true }
@@ -19,9 +20,23 @@ export async function configEdit(configFilePath: string): Promise<ConfigEditResu
       resolve({ ok: false, error: `Failed to launch editor "${editorEnv}": ${err.message}` });
     });
 
-    child.on('exit', (code) => {
+    child.on('exit', async (code) => {
       if (code === 0 || code === null) {
-        resolve({ ok: true });
+        try {
+          const content = await readFile(configFilePath, 'utf-8');
+          const raw = JSON.parse(content) as unknown;
+          const result = parseConfig(raw);
+          if (!result.success) {
+            const issue = result.error.issues[0];
+            const path = issue?.path.length ? issue.path.join('.') : '(root)';
+            resolve({ ok: false, error: `Config is invalid after editing: ${path}: ${issue?.message}` });
+          } else {
+            resolve({ ok: true });
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          resolve({ ok: false, error: `Config file is not valid JSON after editing: ${msg}` });
+        }
       } else {
         resolve({ ok: false, error: `Editor "${editorEnv}" exited with code ${code}` });
       }
