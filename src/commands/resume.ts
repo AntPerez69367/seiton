@@ -58,17 +58,23 @@ export async function loadPendingOps(
   return { ok: true, ops: result.data.items, path: pendingPath };
 }
 
+export interface ResumeApplyOutcome extends ApplyResult {
+  /** True when no save was needed or the save succeeded; false when the save failed. */
+  savedRemaining: boolean;
+}
+
 export async function resumeApply(
   ops: readonly PendingOp[],
   pendingPath: string,
   opts: ResumeOptions,
-): Promise<ApplyResult> {
+): Promise<ResumeApplyOutcome> {
   const { session, bw, fs, clock, logger } = opts;
   const result = await applyOps(ops, session, bw, logger);
 
+  let savedRemaining = true;
   if (result.failed.length > 0 || result.remaining.length > 0) {
     const persist = [...result.failed, ...result.remaining];
-    await savePendingOps(persist, pendingPath, fs, clock, logger);
+    savedRemaining = await savePendingOps(persist, pendingPath, fs, clock, logger);
   } else {
     try {
       await fs.remove(pendingPath);
@@ -81,5 +87,5 @@ export async function resumeApply(
     }
   }
 
-  return result;
+  return { ...result, savedRemaining };
 }

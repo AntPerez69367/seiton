@@ -133,7 +133,11 @@ export async function runResumeCli(argv: string[]): Promise<void> {
 
   if (result.failed.length > 0 || result.remaining.length > 0) {
     applySpin.error(`${result.applied} applied, ${result.failed.length} failed, ${result.remaining.length} remaining`);
-    prompt.outro('Resume finished with errors. Remaining ops saved.');
+    prompt.outro(
+      result.savedRemaining
+        ? 'Resume finished with errors. Remaining ops saved.'
+        : 'Resume finished with errors. Failed to persist remaining ops — see log for recovery data.',
+    );
     process.exit(ExitCode.GENERAL_ERROR);
   }
 

@@ -44,8 +44,13 @@ export async function configSet(
   }
 
   const dir = dirname(configFilePath);
-  await mkdir(dir, { recursive: true });
-  await writeFile(configFilePath, JSON.stringify(raw, null, 2) + '\n', { mode: 0o600 });
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(configFilePath, `${JSON.stringify(raw, null, 2)}\n`, { mode: 0o600 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: `Failed to write config: ${msg}` };
+  }
   return { ok: true };
 }
 
