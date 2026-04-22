@@ -8,13 +8,21 @@ export type ConfigEditResult =
   | { ok: false; error: string };
 
 export async function configEdit(configFilePath: string): Promise<ConfigEditResult> {
-  const editorEnv = process.env['VISUAL'] ?? process.env['EDITOR'] ?? 'vi';
+  const rawEditor = (process.env['VISUAL'] ?? process.env['EDITOR'] ?? '').trim();
+  const editorEnv = rawEditor || 'vi';
   const [editor, ...editorArgs] = editorEnv.split(/\s+/);
 
   await ensureConfigFileExists(configFilePath);
 
   return new Promise<ConfigEditResult>((resolve) => {
-    const child = spawn(editor!, [...editorArgs, configFilePath], { stdio: 'inherit' });
+    let child;
+    try {
+      child = spawn(editor!, [...editorArgs, configFilePath], { stdio: 'inherit' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      resolve({ ok: false, error: `Failed to launch editor "${editorEnv}": ${msg}` });
+      return;
+    }
 
     child.on('error', (err) => {
       resolve({ ok: false, error: `Failed to launch editor "${editorEnv}": ${err.message}` });
