@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.10] - 2026-04-22
+
+### Added
+- Analyzed all review comments from greptile.txt (2 comments) and code-rabbit.txt (~40 comments including duplicates). Many issues were already fixed in prior commits. Applied 8 fixes for the remaining valid issues:
 ## [0.3.9] - 2026-04-21
 
 ### Added
@@ -31,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.6] - 2026-04-21
 
 ### Added
-- [MILESTONE 13 ✓] feat: Implement Milestone 13: Add github action to deploy docusaurus
+- [MILESTONE 13 ✓] feat: Implement Milestone 13: Add GitHub Actions workflow to deploy Docusaurus
 
 ## [0.3.5] - 2026-04-21
 
@@ -64,8 +69,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Analysis orchestrator** (`src/lib/analyze/index.ts`): Pure function `analyzeItems()` that runs all 5 analyzers (duplicates, password reuse, weak passwords, missing fields, folder suggestions) over vault items. Replaces the inline stub in audit.ts that only checked for missing passwords. (M10)
-
-### Added
 - **Clack UI layer** (`src/ui/prompts.ts`): Thin wrapper around `@clack/prompts` providing `intro`, `outro`, `select`, `confirm`, `multiselect`, `text`, `spinner`, and log methods. Falls back to plain readline prompts when `ui.prompt_style: "plain"` is configured. (M11)
 - **Password masking** (`src/ui/mask.ts`): `maskPassword` and `maskPartial` helpers respecting `ui.mask_character` config.
 - **Interactive review loop** (`src/ui/review-loop.ts`): `interactiveReview` function walks findings one by one using clack prompts, presenting duplicates as keep-one-delete-rest, folder suggestions as accept/skip, and weak/missing/reuse as acknowledge.
@@ -80,8 +83,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Audit command orchestrator** (`src/commands/audit.ts`): Full pipeline — TTY enforcement, BW_SESSION check, preflight, fetch, validate, analyze, review, apply, sync. Handles `--dry-run`, `--skip`, `--limit`, and SIGINT gracefully. (M10)
-
-### Added
 - `seiton audit` command — the default subcommand that orchestrates the full pipeline: preflight checks, vault fetch, schema validation, analysis, interactive review, apply mutations, and sync.
 - CLI flags `--skip <category>` (repeatable) and `--limit <n>` for the audit command.
 - `--dry-run` flag skips the apply phase and exits 0 after presenting findings.
