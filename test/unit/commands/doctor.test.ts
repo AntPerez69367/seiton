@@ -15,7 +15,7 @@ describe('runDoctorChecks', () => {
     assert.ok(sessionCheck.detail.includes('BW_SESSION is set'), 'detail should indicate session is set');
   });
 
-  it('fails session check when bwSession option is omitted', async () => {
+  it('fails session check when opts.bwSession is undefined (env is not consulted)', async () => {
     const originalSession = process.env['BW_SESSION'];
 
     try {
@@ -33,7 +33,7 @@ describe('runDoctorChecks', () => {
     }
   });
 
-  it('passes session check with bwSession option regardless of env', async () => {
+  it('passes session check with opts.bwSession regardless of env', async () => {
     const originalSession = process.env['BW_SESSION'];
 
     try {
@@ -51,26 +51,6 @@ describe('runDoctorChecks', () => {
         process.env['BW_SESSION'] = originalSession;
       } else {
         delete process.env['BW_SESSION'];
-      }
-    }
-  });
-
-  it('fails session check when both option and env are absent', async () => {
-    const originalSession = process.env['BW_SESSION'];
-
-    try {
-      delete process.env['BW_SESSION'];
-
-      const results = await runDoctorChecks({
-        bwSession: undefined,
-      });
-
-      const sessionCheck = results.find(r => r.name === 'session');
-      assert.ok(sessionCheck, 'should have a session check result');
-      assert.equal(sessionCheck.status, 'fail', 'session check should fail when both are absent');
-    } finally {
-      if (originalSession) {
-        process.env['BW_SESSION'] = originalSession;
       }
     }
   });
