@@ -16,22 +16,30 @@ export async function configEdit(configFilePath: string): Promise<ConfigEditResu
   if (!ensured.ok) return ensured;
 
   return new Promise<ConfigEditResult>((resolve) => {
+    let settled = false;
+    const settle = (result: ConfigEditResult) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
     let child;
     try {
       child = spawn(editor!, [...editorArgs, configFilePath], { stdio: 'inherit' });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      resolve({ ok: false, error: `Failed to launch editor "${editorEnv}": ${msg}` });
+      settle({ ok: false, error: `Failed to launch editor "${editorEnv}": ${msg}` });
       return;
     }
 
     child.on('error', (err) => {
-      resolve({ ok: false, error: `Failed to launch editor "${editorEnv}": ${err.message}` });
+      settle({ ok: false, error: `Failed to launch editor "${editorEnv}": ${err.message}` });
     });
 
     child.on('exit', async (code, signal) => {
+      if (settled) return;
       if (signal) {
-        resolve({ ok: false, error: `Editor "${editorEnv}" was terminated by signal ${signal}` });
+        settle({ ok: false, error: `Editor "${editorEnv}" was terminated by signal ${signal}` });
       } else if (code === 0) {
         try {
           const content = await readFile(configFilePath, 'utf-8');
@@ -40,16 +48,16 @@ export async function configEdit(configFilePath: string): Promise<ConfigEditResu
           if (!result.success) {
             const issue = result.error.issues[0];
             const path = issue?.path.length ? issue.path.join('.') : '(root)';
-            resolve({ ok: false, error: `Config is invalid after editing: ${path}: ${issue?.message}` });
+            settle({ ok: false, error: `Config is invalid after editing: ${path}: ${issue?.message}` });
           } else {
-            resolve({ ok: true });
+            settle({ ok: true });
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          resolve({ ok: false, error: `Config file is not valid JSON after editing: ${msg}` });
+          settle({ ok: false, error: `Config file is not valid JSON after editing: ${msg}` });
         }
       } else {
-        resolve({ ok: false, error: `Editor "${editorEnv}" exited with code ${code}` });
+        settle({ ok: false, error: `Editor "${editorEnv}" exited with code ${code}` });
       }
     });
   });
