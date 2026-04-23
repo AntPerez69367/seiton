@@ -1,0 +1,68 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { runDoctorChecks } from '../../../src/commands/doctor.js';
+
+describe('runDoctorChecks', () => {
+  it('uses bwSession from options when provided', async () => {
+    const results = await runDoctorChecks({
+      bwSession: 'test-session-token-12345',
+    });
+
+    // Find the session check result
+    const sessionCheck = results.find(r => r.name === 'session');
+    assert.ok(sessionCheck, 'should have a session check result');
+    assert.equal(sessionCheck.status, 'ok', 'session check should pass when bwSession is provided');
+    assert.ok(sessionCheck.detail.includes('BW_SESSION is set'), 'detail should indicate session is set');
+  });
+
+  it('fails session check when opts.bwSession is undefined (env is not consulted)', async () => {
+    const originalSession = process.env['BW_SESSION'];
+
+    try {
+      delete process.env['BW_SESSION'];
+
+      const results = await runDoctorChecks({});
+
+      const sessionCheck = results.find(r => r.name === 'session');
+      assert.ok(sessionCheck, 'should have a session check result');
+      assert.equal(sessionCheck.status, 'fail', 'session check should fail when bwSession is not provided');
+    } finally {
+      if (originalSession) {
+        process.env['BW_SESSION'] = originalSession;
+      }
+    }
+  });
+
+  it('passes session check with opts.bwSession regardless of env', async () => {
+    const originalSession = process.env['BW_SESSION'];
+
+    try {
+      process.env['BW_SESSION'] = 'env-session-token';
+
+      const results = await runDoctorChecks({
+        bwSession: 'option-session-token',
+      });
+
+      const sessionCheck = results.find(r => r.name === 'session');
+      assert.ok(sessionCheck, 'should have a session check result');
+      assert.equal(sessionCheck.status, 'ok', 'session check should pass with option value');
+    } finally {
+      if (originalSession) {
+        process.env['BW_SESSION'] = originalSession;
+      } else {
+        delete process.env['BW_SESSION'];
+      }
+    }
+  });
+
+  it('includes other checks in results', async () => {
+    const results = await runDoctorChecks({});
+
+    const checkNames = results.map(r => r.name);
+    assert.ok(checkNames.includes('node'), 'should include node version check');
+    assert.ok(checkNames.includes('bw'), 'should include bw binary check');
+    assert.ok(checkNames.includes('session'), 'should include session check');
+    assert.ok(checkNames.includes('config'), 'should include config check');
+    assert.ok(checkNames.includes('version'), 'should include version check');
+  });
+});

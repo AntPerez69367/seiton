@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import { parseArgs } from 'node:util';
 import { VERSION } from './version.js';
 import { ExitCode } from './exit-codes.js';
-import { configShow } from './cli/commands/config.js';
 import { runDoctor } from './cli/commands/doctor.js';
-import { createLogger, createNoopLogger } from './adapters/logging.js';
-import { createSystemClock } from './adapters/clock.js';
-import { installSignalHandlers } from './core/signals.js';
+import { runAuditCli } from './cli/commands/audit.js';
+import { runResumeCli } from './cli/commands/resume.js';
+import { runDiscardCli } from './cli/commands/discard.js';
+import { runReportCli } from './cli/commands/report.js';
+import { runConfigCli } from './cli/commands/config.js';
 
 const HELP_TEXT = `seiton v${VERSION} — interactive Bitwarden vault auditor
 
@@ -27,12 +27,19 @@ Global Flags:
   --no-color        Disable ANSI color output
   --verbose, -v     Increase log detail (-vv for trace)
   --quiet, -q       Suppress non-essential output
+  --skip <category> Skip a finding category (repeatable)
+  --limit <n>       Stop after n findings per category
   --help, -h        Print help and exit
   --version, -V     Print version and exit
 
 Run 'seiton <command> --help' for command-specific usage.`;
 
-const VALUE_TAKING_FLAGS = new Set(['--config']);
+const COMMANDS = new Set(['audit', 'resume', 'discard', 'report', 'doctor', 'config']);
+const VALUE_TAKING_FLAGS = new Set(['--config', '--skip', '--limit']);
+const KNOWN_GLOBAL_FLAGS = new Set([
+  '--config', '--dry-run', '--no-color', '--verbose', '-v', '--quiet', '-q',
+  '--skip', '--limit', '--help', '-h', '--version', '-V',
+]);
 
 function findFirstPositional(rawArgs: string[]): { index: number; value: string } | undefined {
   for (let i = 0; i < rawArgs.length; i++) {
@@ -47,85 +54,52 @@ function findFirstPositional(rawArgs: string[]): { index: number; value: string 
   return undefined;
 }
 
+function extractCommandArgs(rawArgs: string[], commandIndex: number): string[] {
+  return [...rawArgs.slice(0, commandIndex), ...rawArgs.slice(commandIndex + 1)];
+}
+
 async function main(): Promise<void> {
   const rawArgs = process.argv.slice(2);
-  const firstPos = findFirstPositional(rawArgs);
 
-  if (firstPos?.value === 'doctor') {
-    const doctorArgs = [...rawArgs.slice(0, firstPos.index), ...rawArgs.slice(firstPos.index + 1)];
-    const verboseCount = doctorArgs.filter((a) => a === '--verbose' || a === '-v').length;
-    const quiet = doctorArgs.includes('--quiet') || doctorArgs.includes('-q');
-    const earlyLog = quiet || verboseCount === 0
-      ? createNoopLogger()
-      : createLogger({
-          format: 'text',
-          level: verboseCount >= 2 ? 'debug' : 'info',
-          clock: createSystemClock(),
-        });
-    installSignalHandlers(earlyLog);
-    await runDoctor(doctorArgs);
-    return;
-  }
-
-  let args: ReturnType<typeof parseArgs>;
-  try {
-    args = parseArgs({
-      allowPositionals: true,
-      strict: true,
-      options: {
-        help: { type: 'boolean', short: 'h' },
-        version: { type: 'boolean', short: 'V' },
-        config: { type: 'string' },
-        'dry-run': { type: 'boolean' },
-        'no-color': { type: 'boolean' },
-        verbose: { type: 'boolean', short: 'v', multiple: true },
-        quiet: { type: 'boolean', short: 'q' },
-      },
-    });
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    process.stderr.write(`seiton: invalid arguments: ${detail}\nRun 'seiton --help' for usage.\n`);
-    process.exit(ExitCode.USAGE);
-  }
-
-  if (args.values.version) {
+  if (rawArgs.includes('--version') || rawArgs.includes('-V')) {
     process.stdout.write(`${VERSION}\n`);
     process.exit(ExitCode.SUCCESS);
   }
 
-  if (args.values.help) {
-    process.stdout.write(`${HELP_TEXT}\n`);
-    process.exit(ExitCode.SUCCESS);
+  const firstPos = findFirstPositional(rawArgs);
+
+  if (!firstPos || !COMMANDS.has(firstPos.value)) {
+    if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
+      process.stdout.write(`${HELP_TEXT}\n`);
+      process.exit(ExitCode.SUCCESS);
+    }
   }
 
-  const verboseCount = Array.isArray(args.values.verbose)
-    ? args.values.verbose.length
-    : args.values.verbose ? 1 : 0;
-  const quiet = Boolean(args.values.quiet);
-
-  const log = quiet || verboseCount === 0
-    ? createNoopLogger()
-    : createLogger({
-        format: 'text',
-        level: verboseCount >= 2 ? 'debug' : 'info',
-        clock: createSystemClock(),
-      });
-
-  installSignalHandlers(log);
-
-  const dryRun = Boolean(args.values['dry-run']);
-  const [positionalCommand, subcommand] = args.positionals;
-
-  log.info('seiton started', { command: positionalCommand, version: VERSION, dryRun });
-
-  if (positionalCommand === 'config' && subcommand === 'show') {
-    log.debug('dispatching config show');
-    await configShow(args.values.config as string | undefined, log, dryRun);
-    return;
+  if (!firstPos) {
+    for (const arg of rawArgs) {
+      if (arg.startsWith('-') && !KNOWN_GLOBAL_FLAGS.has(arg)) {
+        process.stderr.write(`seiton: unknown flag "${arg}"\nRun 'seiton --help' for usage.\n`);
+        process.exit(ExitCode.USAGE);
+      }
+    }
   }
 
-  process.stdout.write(`${HELP_TEXT}\n`);
-  process.exit(ExitCode.SUCCESS);
+  const command = firstPos?.value ?? 'audit';
+  const commandArgs = firstPos ? extractCommandArgs(rawArgs, firstPos.index) : rawArgs;
+
+  if (!COMMANDS.has(command)) {
+    process.stderr.write(`seiton: unknown command "${command}"\nRun 'seiton --help' for usage.\n`);
+    process.exit(ExitCode.USAGE);
+  }
+
+  switch (command) {
+    case 'audit': return runAuditCli(commandArgs);
+    case 'resume': return runResumeCli(commandArgs);
+    case 'discard': return runDiscardCli(commandArgs);
+    case 'report': return runReportCli(commandArgs);
+    case 'doctor': return runDoctor(commandArgs);
+    case 'config': return runConfigCli(commandArgs);
+  }
 }
 
 await main();

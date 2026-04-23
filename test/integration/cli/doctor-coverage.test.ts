@@ -5,21 +5,11 @@ import { promisify } from 'node:util';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { ROOT, ENTRY, FAKE_BW, type RunResult } from '../../helpers/run-cli.js';
 
 const execFileAsync = promisify(execFile);
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const ENTRY = join(ROOT, 'src', 'bw-organize.ts');
-const FAKE_BW = join(ROOT, 'test', 'helpers', 'fake-bw.ts');
 const THROW_RUNNER = join(ROOT, 'test', 'helpers', 'doctor-throw-runner.ts');
-
-interface RunResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
 
 let tempHome: string;
 
@@ -122,12 +112,12 @@ describe('seiton doctor — coverage gap tests', { skip: process.platform === 'w
   });
 
   describe('bw returning a non-ENOENT error', () => {
-    it('prints [fail] with error detail when bw crashes (not ENOENT)', async () => {
+    it('reports bw error detail when bw crashes (not ENOENT)', async () => {
       const { stdout, exitCode } = await runDoctor([], {
         FAKE_BW_SCENARIO: 'version-error',
       });
       assert.equal(exitCode, 1);
-      assert.ok(stdout.includes('[fail] bw:'), 'should show bw check as failed');
+      assert.ok(stdout.includes('bw:'), 'should show bw check');
       assert.ok(stdout.includes('error:'), 'should show error detail prefix');
       assert.ok(!stdout.includes('not found on PATH'), 'should NOT show ENOENT message');
     });

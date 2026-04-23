@@ -39,7 +39,7 @@ export type FolderFinding = {
   readonly category: 'folders';
   readonly item: BwItem;
   readonly suggestedFolder: string;
-  readonly matchedRule: string;
+  readonly existingFolderId: string | null;
 };
 
 export type Finding =
@@ -80,10 +80,10 @@ export function makeMissingFinding(
 
 export function makeFolderFinding(
   item: BwItem,
-  suggestedFolder: string,
-  matchedRule: string,
+  folder: string,
+  existingFolderId: string | null = null,
 ): FolderFinding {
-  return { category: 'folders', item, suggestedFolder, matchedRule };
+  return { category: 'folders', item, suggestedFolder: folder, existingFolderId };
 }
 
 export function isFindingCategory(value: string): value is FindingCategory {

@@ -79,6 +79,7 @@ const RawConfigSchema = z.object({
 export function parseConfig(raw: unknown): { success: true; data: Config } | { success: false; error: z.ZodError } {
   const preprocessed = typeof raw === 'object' && raw !== null ? { ...raw } : raw;
   if (typeof preprocessed === 'object' && preprocessed !== null) {
+    delete (preprocessed as Record<string, unknown>)['$schema'];
     for (const key of SECTION_KEYS) {
       if (!(key in preprocessed)) {
         (preprocessed as Record<string, unknown>)[key] = {};

@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-04-21
+
+### Changed
+- Renamed `ExitCode.MALFORMED_INPUT` to `ExitCode.INTERNAL_ERROR` (value unchanged: 2) to better reflect its use for unexpected runtime errors rather than user-supplied malformed input.
+
+### Fixed
+- Narrowed bare `catch` in `src/commands/audit.ts` pending-file removal to only ignore ENOENT/NOT_FOUND; non-ENOENT errors now logged via `logger.warn('audit: failed to remove pending file after successful apply', ...)`.
+- `ensureConfigFileExists` in `src/commands/config-edit.ts` now re-throws non-ENOENT errors instead of silently swallowing them.
+- Expanded `UNSAFE_PATTERNS` in `src/adapters/logging.ts` to redact `*_CREDENTIAL*`, `*_AUTH`, `*API_KEY*`, and `*PASSPHRASE` context keys (defense-in-depth).
+## [0.3.7] - 2026-04-21
+
+### Added
+- [MILESTONE 13] GitHub Actions workflow to build and deploy the Docusaurus site from `website/` to GitHub Pages. (M13)
+- [MILESTONE 12] Implemented all remaining CLI commands with dedicated CLI wrappers and `--help` support. (M12)
+  - **`seiton resume`**: loads pending operations from a prior interrupted audit and applies them after interactive confirmation.
+  - **`seiton discard`**: deletes the saved pending-ops queue.
+  - **`seiton report`**: read-only vault analysis supporting `--json` output with redacted secrets.
+  - **`seiton config get <key>`**: prints a specific configuration value.
+  - **`seiton config set <key> <value>`**: sets a configuration value (supports `--unset`).
+  - **`seiton config path`**: prints the active config file path.
+  - **`seiton config edit`**: opens the config file in `$VISUAL`/`$EDITOR`.
+  - **`seiton config reset`**: resets config to defaults (supports `--keep-custom-rules`, `--yes`).
+  - CLI wrapper for `seiton audit` extracted into `src/cli/commands/audit.ts`.
+- [MILESTONE 10/11] Analysis orchestrator, interactive review loop, Clack UI layer, password masking. (M10, M11)
+- Resolved all unresolved architectural drift observations in `.tekhton/DRIFT_LOG.md`.
+
+### Changed
+- Main CLI router (`src/bw-organize.ts`) refactored to dispatch all subcommands to dedicated CLI wrappers. (M12)
+- `src/cli/commands/config.ts` expanded to route all config sub-subcommands (show, get, set, path, edit, reset). (M12)
+## [0.3.2] - 2026-04-21
+
+### Added
+- **Analysis orchestrator** (`src/lib/analyze/index.ts`): Pure function `analyzeItems()` that runs all 5 analyzers (duplicates, password reuse, weak passwords, missing fields, folder suggestions) over vault items. Replaces the inline stub in audit.ts that only checked for missing passwords. (M10)
+- **Clack UI layer** (`src/ui/prompts.ts`): Thin wrapper around `@clack/prompts` providing `intro`, `outro`, `select`, `confirm`, `multiselect`, `text`, `spinner`, and log methods. Falls back to plain readline prompts when `ui.prompt_style: "plain"` is configured. (M11)
+- **Password masking** (`src/ui/mask.ts`): `maskPassword` and `maskPartial` helpers respecting `ui.mask_character` config.
+- **Interactive review loop** (`src/ui/review-loop.ts`): `interactiveReview` function walks findings one by one using clack prompts, presenting duplicates as keep-one-delete-rest, folder suggestions as accept/skip, and weak/missing/reuse as acknowledge.
+- `@clack/prompts` runtime dependency for interactive terminal UI (spinners, select, confirm, intro/outro banners).
+
+### Changed
+- `seiton audit` now displays clack-styled intro/outro banners, spinners during fetch/analyze/apply, and per-finding interactive prompts.
+- `seiton doctor` now displays clack-styled intro/outro banners and per-check success/error log messages.
+- Dry-run mode continues to use the non-interactive batch review path (no prompts shown).
+
+## [0.3.1] - 2026-04-20
+
+### Added
+- **Audit command orchestrator** (`src/commands/audit.ts`): Full pipeline — TTY enforcement, BW_SESSION check, preflight, fetch, validate, analyze, review, apply, sync. Handles `--dry-run`, `--skip`, `--limit`, and SIGINT gracefully. (M10)
+- `seiton audit` command — the default subcommand that orchestrates the full pipeline: preflight checks, vault fetch, schema validation, analysis, interactive review, apply mutations, and sync.
+- CLI flags `--skip <category>` (repeatable) and `--limit <n>` for the audit command.
+- `--dry-run` flag skips the apply phase and exits 0 after presenting findings.
+- TTY enforcement: `seiton audit` exits 64 when stdin/stdout is not a TTY, suggesting `seiton report` instead.
+- SIGINT handling persists in-progress `PendingOp[]` to `pending.json` (mode 0600) and exits 130, honoring `audit.save_pending_on_sigint` config.
+- Partial apply failure persists remaining + failed ops to `pending.json` and exits 1.
+- `bw sync` runs after successful apply; sync failure is warn-only.
+- `BwAdapter` interface in `src/lib/bw.ts` for structured vault operations (list items, list folders, edit, delete, create folder, sync).
+
+### Changed
+- Running `seiton` with no arguments now dispatches to the `audit` command instead of showing help text.
+
+## [0.3.0] - 2026-04-20
+
+### Added
+- Release workflow (`.github/workflows/release.yml`): pushing a `vX.Y.Z` tag triggers build, test, npm publish with provenance, GitHub Release with SHA256SUMS, and a container-based smoke test.
+- Smoke test (`test/integration/release-smoke.test.ts`): verifies the npm tarball contents, `--help`, `--version`, and VERSION file consistency.
+- Install instructions in `README.md` updated with verification commands.
+
+### Fixed
+- Version synchronization: `package.json`, `src/version.ts`, `VERSION`, and `package-lock.json` now all report `0.3.0` (M9).
+
 ## [0.2.7] - 2026-04-20
 
 ### Added

@@ -1,34 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
-const execFileAsync = promisify(execFile);
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const ENTRY = join(ROOT, 'src', 'bw-organize.ts');
-
-interface RunResult {
-  stdout: string;
-  stderr: string;
-  exitCode: number;
-}
-
-async function runCli(args: string[] = []): Promise<RunResult> {
-  try {
-    const { stdout, stderr } = await execFileAsync(
-      process.execPath,
-      ['--import', 'tsx', ENTRY, ...args],
-      { cwd: ROOT, env: { ...process.env, NODE_NO_WARNINGS: '1' } },
-    );
-    return { stdout, stderr, exitCode: 0 };
-  } catch (err: unknown) {
-    const e = err as { stdout: string; stderr: string; code: number };
-    return { stdout: e.stdout ?? '', stderr: e.stderr ?? '', exitCode: e.code };
-  }
-}
+import { runCli } from '../helpers/run-cli.js';
 
 describe('CLI entry point', () => {
   describe('--version flag', () => {
@@ -71,19 +43,10 @@ describe('CLI entry point', () => {
   });
 
   describe('default (no arguments)', () => {
-    it('prints help text to stdout and exits 0', async () => {
-      const { stdout, exitCode } = await runCli([]);
-      assert.ok(stdout.includes('Usage:'));
-      assert.ok(stdout.includes('Commands:'));
-      assert.equal(exitCode, 0);
-    });
-
-    it('produces identical output to --help', async () => {
-      const [defaultResult, helpResult] = await Promise.all([
-        runCli([]),
-        runCli(['--help']),
-      ]);
-      assert.equal(defaultResult.stdout, helpResult.stdout);
+    it('dispatches to audit which requires a TTY (exits 64 in subprocess)', async () => {
+      const { stderr, exitCode } = await runCli([]);
+      assert.equal(exitCode, 64);
+      assert.ok(stderr.includes('interactive terminal') || stderr.includes('report'));
     });
   });
 

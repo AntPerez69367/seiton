@@ -1,6 +1,6 @@
 {
   "name": "seiton",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Interactive command-line auditor for Bitwarden vaults",
   "type": "module",
   "license": "MIT",
@@ -24,7 +24,8 @@
     "lint": "tsc --noEmit",
     "test": "node --import tsx --test 'test/unit/**/*.test.ts'",
     "test:unit": "node --import tsx --test 'test/unit/**/*.test.ts'",
-    "test:integration": "node --import tsx --test 'test/integration/**/*.test.ts'"
+    "test:integration": "node --import tsx --test 'test/integration/**/*.test.ts'",
+    "test:coverage": "node --experimental-test-coverage --test-coverage-include='src/**/*.ts' --test-coverage-exclude='test/**' --import tsx --test 'test/unit/**/*.test.ts'"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -32,6 +33,7 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
+    "@clack/prompts": "^1.2.0",
     "tldts": "^7.0.28",
     "zod": "^4.3.6"
   }

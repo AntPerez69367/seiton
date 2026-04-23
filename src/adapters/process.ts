@@ -27,10 +27,13 @@ export interface ProcessAdapter {
   isTTY(stream: 'stdin' | 'stdout' | 'stderr'): boolean;
 }
 
+export type TtyMap = Record<'stdin' | 'stdout' | 'stderr', boolean>;
+
 export function createProcessAdapter(
   env: Record<string, string | undefined> = process.env,
   exitFn: (code: number) => never = (code) => process.exit(code),
   logger?: Logger,
+  ttyOverride?: TtyMap,
 ): ProcessAdapter {
   return {
     getEnv(name: string): string | undefined {
@@ -97,6 +100,7 @@ export function createProcessAdapter(
     },
 
     isTTY(stream: 'stdin' | 'stdout' | 'stderr'): boolean {
+      if (ttyOverride) return ttyOverride[stream];
       switch (stream) {
         case 'stdin': return Boolean(process.stdin.isTTY);
         case 'stdout': return Boolean(process.stdout.isTTY);

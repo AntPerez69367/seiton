@@ -140,6 +140,32 @@ describe('ConfigSchema', () => {
     assert.ok(result.success);
     assert.equal(result.data.paths.bw_binary, null);
   });
+
+  it('strips $schema key before parsing', () => {
+    const result = parseConfig({
+      version: 1,
+      $schema: 'https://example.com/schema.json',
+    });
+    assert.ok(result.success);
+    assert.equal(result.data.version, 1);
+  });
+
+  it('rejects unknown $-prefixed keys other than $schema', () => {
+    const result = parseConfig({ version: 1, $other: 'value' });
+    assert.ok(!result.success);
+  });
+
+  it('strips $schema key and allows other valid config', () => {
+    const result = parseConfig({
+      version: 1,
+      $schema: 'https://example.com/schema.json',
+      core: { verbose: 1 },
+      paths: { bw_binary: '/usr/bin/bw' },
+    });
+    assert.ok(result.success);
+    assert.equal(result.data.core.verbose, 1);
+    assert.equal(result.data.paths.bw_binary, '/usr/bin/bw');
+  });
 });
 
 describe('ConfigSchema logging section', () => {
