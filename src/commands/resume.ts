@@ -6,6 +6,7 @@ import type { Logger } from '../adapters/logging.js';
 import { parsePendingQueue, type PendingOp } from '../lib/domain/pending.js';
 import { applyOps, type ApplyResult } from './apply.js';
 import { savePendingOps, resolvePendingPath } from './pending-io.js';
+import { registerCleanup } from '../core/signals.js';
 
 export type ResumeResult =
   | { ok: true; applied: number; failed: number }
@@ -69,25 +70,39 @@ export async function resumeApply(
   opts: ResumeOptions,
 ): Promise<ResumeApplyOutcome> {
   const { session, bw, fs, clock, logger } = opts;
-  const result = await applyOps(ops, session, bw, logger);
+  const pendingSet = new Set(ops);
 
-  let savedRemaining = true;
-  let pendingCleanupFailed = false;
-  if (result.failed.length > 0 || result.remaining.length > 0) {
-    const persist = [...result.failed, ...result.remaining];
-    savedRemaining = await savePendingOps(persist, pendingPath, fs, clock, logger);
-  } else {
-    try {
-      await fs.remove(pendingPath);
-    } catch (err: unknown) {
-      const code = (err as { code?: string } | null)?.code;
-      if (code !== 'ENOENT' && code !== 'NOT_FOUND') {
-        const message = err instanceof Error ? err.message : String(err);
-        logger?.warn('resume: failed to remove pending file after successful apply', { path: pendingPath, error: message });
-        pendingCleanupFailed = true;
+  const unregister = registerCleanup(async () => {
+    if (pendingSet.size > 0) {
+      await savePendingOps([...pendingSet], pendingPath, fs, clock, logger);
+    }
+  });
+
+  try {
+    const result = await applyOps(ops, session, bw, logger, (applied) => {
+      pendingSet.delete(applied);
+    });
+
+    let savedRemaining = true;
+    let pendingCleanupFailed = false;
+    if (result.failed.length > 0 || result.remaining.length > 0) {
+      const persist = [...result.failed, ...result.remaining];
+      savedRemaining = await savePendingOps(persist, pendingPath, fs, clock, logger);
+    } else {
+      try {
+        await fs.remove(pendingPath);
+      } catch (err: unknown) {
+        const code = (err as { code?: string } | null)?.code;
+        if (code !== 'ENOENT' && code !== 'NOT_FOUND') {
+          const message = err instanceof Error ? err.message : String(err);
+          logger?.warn('resume: failed to remove pending file after successful apply', { path: pendingPath, error: message });
+          pendingCleanupFailed = true;
+        }
       }
     }
-  }
 
-  return { ...result, savedRemaining, pendingCleanupFailed };
+    return { ...result, savedRemaining, pendingCleanupFailed };
+  } finally {
+    unregister();
+  }
 }
