@@ -61,7 +61,7 @@ export async function applyOps(
 
   const totalStart = performance.now();
 
-  const phaseStart1 = performance.now();
+  let phaseStart = performance.now();
   for (let i = 0; i < createOps.length; i++) {
     const op = createOps[i];
     overallIdx++;
@@ -82,9 +82,9 @@ export async function applyOps(
       failed.push(op);
     }
   }
-  timings.create_folder.durationMs = performance.now() - phaseStart1;
+  timings.create_folder.durationMs = performance.now() - phaseStart;
 
-  const phaseStart2 = performance.now();
+  phaseStart = performance.now();
   for (let i = 0; i < assignOps.length; i++) {
     const op = assignOps[i];
     overallIdx++;
@@ -125,9 +125,9 @@ export async function applyOps(
       failed.push(persistOp);
     }
   }
-  timings.assign_folder.durationMs = performance.now() - phaseStart2;
+  timings.assign_folder.durationMs = performance.now() - phaseStart;
 
-  const phaseStart3 = performance.now();
+  phaseStart = performance.now();
   for (let i = 0; i < deleteOps.length; i++) {
     const op = deleteOps[i];
     overallIdx++;
@@ -146,7 +146,7 @@ export async function applyOps(
       failed.push(op);
     }
   }
-  timings.delete_item.durationMs = performance.now() - phaseStart3;
+  timings.delete_item.durationMs = performance.now() - phaseStart;
 
   timings.totalDurationMs = performance.now() - totalStart;
 

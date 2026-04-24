@@ -21,8 +21,12 @@ function makeItem(overrides: Partial<BwItem> = {}): BwItem {
   };
 }
 
-function makeMockPrompt(responses: (number | boolean | null)[]): PromptAdapter {
+function makeMockPrompt(
+  responses: (number | boolean | null)[] = [],
+  multiselectResponses: (number[] | null)[] = [],
+): PromptAdapter {
   let idx = 0;
+  let msIdx = 0;
   const noopSpinner: SpinnerHandle = { message() {}, stop() {}, error() {} };
   return {
     intro() {},
@@ -39,7 +43,12 @@ function makeMockPrompt(responses: (number | boolean | null)[]): PromptAdapter {
       if (resp === null) return null;
       return Boolean(resp);
     },
-    async multiselect<T>(): Promise<T[] | null> { return []; },
+    async multiselect<T>(_msg: string, options: { value: T }[]): Promise<T[] | null> {
+      const resp = multiselectResponses[msIdx++];
+      if (resp === undefined) return [];
+      if (resp === null) return null;
+      return resp.map(i => options[i]!.value);
+    },
     async text(): Promise<string | null> { return ''; },
     startSpinner(): SpinnerHandle { return noopSpinner; },
     logInfo() {},
@@ -91,23 +100,23 @@ describe('interactiveReview', () => {
     assert.equal(result.skipped, 1);
   });
 
-  it('creates delete ops for duplicate findings (keep first)', async () => {
+  it('creates delete ops for duplicate findings via flat multiselect', async () => {
     const items = [makeItem({ id: 'keep' }), makeItem({ id: 'dup1' }), makeItem({ id: 'dup2' })];
     const findings: Finding[] = [
       { category: 'duplicates', items, key: 'test-key' },
     ];
-    const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([0]) }));
+    const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([], [[1, 2]]) }));
     assert.equal(result.ops.length, 2);
     assert.equal(result.ops[0]!.kind, 'delete_item');
     assert.equal(result.ops[1]!.kind, 'delete_item');
   });
 
-  it('cancels on null from select (user presses Ctrl+C)', async () => {
+  it('cancels on null from multiselect (user presses Ctrl+C)', async () => {
     const items = [makeItem({ id: 'a' }), makeItem({ id: 'b' })];
     const findings: Finding[] = [
       { category: 'duplicates', items, key: 'k1' },
     ];
-    const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([null]) }));
+    const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([], [null]) }));
     assert.equal(result.ops.length, 0);
     assert.equal(result.reviewed, 0);
   });
@@ -191,27 +200,30 @@ describe('interactiveReview', () => {
     assert.equal(assignOps.length, 2);
   });
 
-  it('keeps second duplicate when user selects index 1', async () => {
+  it('deletes first item when user checks it in multiselect', async () => {
     const items = [makeItem({ id: 'a' }), makeItem({ id: 'b' })];
     const findings: Finding[] = [
       { category: 'duplicates', items, key: 'k1' },
     ];
-    const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([1]) }));
+    const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([], [[0]]) }));
     assert.equal(result.ops.length, 1);
     assert.equal(result.ops[0]!.kind, 'delete_item');
+    if (result.ops[0]!.kind === 'delete_item') {
+      assert.equal(result.ops[0]!.itemId, 'a');
+    }
   });
 
-  it('invokes onProgress after each approved op so SIGINT cleanup sees latest state', async () => {
+  it('invokes onProgress once after flat multiselect resolves', async () => {
     const findings: Finding[] = [
       { category: 'duplicates', items: [makeItem({ id: 'a' }), makeItem({ id: 'b' })], key: 'k1' },
       { category: 'duplicates', items: [makeItem({ id: 'c' }), makeItem({ id: 'd' })], key: 'k2' },
     ];
     const snapshots: number[] = [];
     const result = await interactiveReview(findings, opts({
-      prompt: makeMockPrompt([0, 0]),
+      prompt: makeMockPrompt([], [[1, 3]]),
       onProgress: (ops) => snapshots.push(ops.length),
     }));
-    assert.deepEqual(snapshots, [1, 2]);
+    assert.deepEqual(snapshots, [2]);
     assert.equal(result.ops.length, 2);
   });
 
@@ -267,7 +279,7 @@ describe('interactiveReview', () => {
       { category: 'duplicates', items: [makeItem({ id: 'a' }), makeItem({ id: 'b' })], key: 'k1' },
     ];
     const logged: string[] = [];
-    const prompt = makeMockPrompt([0]);
+    const prompt = makeMockPrompt([], [[]]);
     prompt.logStep = (msg: string) => { logged.push(msg); };
     const result = await interactiveReview(findings, opts({ prompt }));
     assert.equal(result.reviewed, 1);

@@ -11,7 +11,7 @@ import {
 } from '../domain/finding.js';
 import { dedupKey, dedupKeyMulti } from '../dedup/key.js';
 import { scorePassword, collectWeaknesses, type StrengthConfig } from '../strength/heuristic.js';
-import { classifyItem, type CustomRule } from '../folders/builtins.js';
+import { classifyItem, type CustomRuleEntry } from '../folders/builtins.js';
 
 export interface AnalysisConfig {
   readonly strength: {
@@ -30,7 +30,7 @@ export interface AnalysisConfig {
   readonly folders: {
     readonly preserve_existing: boolean;
     readonly enabled_categories: readonly string[];
-    readonly custom_rules: readonly CustomRule[];
+    readonly custom_rules: readonly CustomRuleEntry[];
   };
 }
 

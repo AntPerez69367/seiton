@@ -1,4 +1,4 @@
-import type { Finding, FindingCategory } from '../lib/domain/finding.js';
+import type { Finding, FindingCategory, DuplicateFinding, FolderFinding } from '../lib/domain/finding.js';
 import { isInformationalCategory } from '../lib/domain/finding.js';
 import type { PendingOp } from '../lib/domain/pending.js';
 import { makeDeleteItemOp, makeAssignFolderOp, makeCreateFolderOp } from '../lib/domain/pending.js';
@@ -7,6 +7,7 @@ import type { PromptAdapter } from './prompts.js';
 import type { BwItem } from '../lib/domain/types.js';
 import { renderBatchReport } from './batch-report.js';
 import { formatMatchReason, offerRuleCapture } from './rule-capture.js';
+import { presentAllDuplicates } from './duplicate-review.js';
 
 export interface ReviewOptions {
   skipCategories: readonly string[];
@@ -100,7 +101,8 @@ export async function interactiveReview(
 
   const categoryCounts = new Map<FindingCategory, number>();
   const informational: Finding[] = [];
-  const actionable: Finding[] = [];
+  const duplicates: DuplicateFinding[] = [];
+  const folders: FolderFinding[] = [];
 
   for (const finding of findings) {
     if (skipCategories.includes(finding.category)) {
@@ -116,8 +118,10 @@ export async function interactiveReview(
 
     if (isInformationalCategory(finding.category)) {
       informational.push(finding);
-    } else {
-      actionable.push(finding);
+    } else if (finding.category === 'duplicates') {
+      duplicates.push(finding);
+    } else if (finding.category === 'folders') {
+      folders.push(finding);
     }
   }
 
@@ -125,6 +129,16 @@ export async function interactiveReview(
     renderBatchReport(informational, prompt, maskChar);
   }
   reviewed += informational.length;
+
+  if (duplicates.length > 0) {
+    const dupResult = await presentAllDuplicates(duplicates, prompt);
+    if (dupResult.cancelled) {
+      return { ops, reviewed, skipped: skipped + duplicates.length + folders.length, cancelled: true };
+    }
+    for (const op of dupResult.ops) ops.push(op);
+    reviewed += duplicates.length;
+    onProgress?.(ops);
+  }
 
   const foldersNeeded = new Set<string>();
   const ctx: ReviewContext = {
@@ -135,11 +149,11 @@ export async function interactiveReview(
     ruleCaptureSuppressed: false,
   };
 
-  for (let i = 0; i < actionable.length; i++) {
-    const finding = actionable[i]!;
-    const action = await presentFinding(finding, ctx);
+  for (let i = 0; i < folders.length; i++) {
+    const finding = folders[i]!;
+    const action = await presentFolder(finding, ctx);
     if (action === 'cancel') {
-      const remaining = actionable.length - i;
+      const remaining = folders.length - i;
       return { ops, reviewed, skipped: skipped + remaining, cancelled: true };
     }
     reviewed++;
@@ -171,49 +185,6 @@ export function itemLabel(item: BwItem): string {
 }
 
 type FindingAction = PendingOp[] | 'skip' | 'cancel';
-
-async function presentFinding(
-  finding: Finding,
-  ctx: ReviewContext,
-): Promise<FindingAction> {
-  switch (finding.category) {
-    case 'duplicates':
-      return presentDuplicate(finding, ctx.prompt);
-    case 'folders':
-      return presentFolder(finding, ctx);
-    case 'weak':
-    case 'reuse':
-    case 'missing':
-      return 'skip';
-  }
-}
-
-async function presentDuplicate(
-  finding: Extract<Finding, { category: 'duplicates' }>,
-  prompt: PromptAdapter,
-): Promise<FindingAction> {
-  const items = finding.items;
-  prompt.logStep(`Duplicate group: ${finding.key}`);
-
-  const options = items.map((item, i) => ({
-    value: i,
-    label: itemLabel(item),
-    hint: i === 0 ? 'oldest' : undefined,
-  }));
-
-  const keepIdx = await prompt.select<number>(
-    'Which item should be kept? (others will be deleted)',
-    options,
-  );
-
-  if (keepIdx === null) return 'cancel';
-
-  const ops: PendingOp[] = [];
-  for (let i = 0; i < items.length; i++) {
-    if (i !== keepIdx) ops.push(makeDeleteItemOp(items[i]!.id));
-  }
-  return ops;
-}
 
 async function presentFolder(
   finding: Extract<Finding, { category: 'folders' }>,

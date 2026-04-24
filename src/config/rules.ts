@@ -1,10 +1,8 @@
 import { readConfigFile, writeConfigFile, type WriteConfigResult } from './io.js';
 import type { Logger } from '../adapters/logging.js';
+import type { CustomRuleEntry } from '../lib/folders/builtins.js';
 
-export interface CustomRuleEntry {
-  readonly folder: string;
-  readonly keywords: readonly string[];
-}
+export type { CustomRuleEntry };
 
 export async function addCustomRule(
   configFilePath: string,

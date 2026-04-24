@@ -92,7 +92,7 @@ for (const rule of BUILTIN_RULES) {
   }
 }
 
-export type CustomRule = {
+export type CustomRuleEntry = {
   readonly folder: string;
   readonly keywords: readonly string[];
 };
@@ -127,7 +127,7 @@ export type ClassifyResult = {
 export function classifyItem(
   name: string,
   uris: readonly string[],
-  customRules: readonly CustomRule[],
+  customRules: readonly CustomRuleEntry[],
   enabledCategories: readonly string[],
 ): ClassifyResult | null {
   const searchable = [
