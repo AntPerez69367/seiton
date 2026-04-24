@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { interactiveReview, itemLabel } from '../../../src/ui/review-loop.js';
-import type { PromptAdapter, SpinnerHandle } from '../../../src/ui/prompts.js';
+import type { PromptAdapter, SelectOption, SpinnerHandle } from '../../../src/ui/prompts.js';
 import type { Finding } from '../../../src/lib/domain/finding.js';
 import type { BwItem } from '../../../src/lib/domain/types.js';
 import type { InteractiveReviewOptions } from '../../../src/ui/review-loop.js';
@@ -114,7 +114,7 @@ describe('interactiveReview', () => {
 
   it('creates folder ops when user accepts folder suggestion', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([0]) }));
     assert.equal(result.ops.length, 2);
@@ -124,7 +124,7 @@ describe('interactiveReview', () => {
 
   it('skips folder finding when user selects skip (index 2)', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([2]) }));
     assert.equal(result.ops.length, 0);
@@ -161,7 +161,7 @@ describe('interactiveReview', () => {
 
   it('cancels on null from folder select', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([null]) }));
     assert.equal(result.ops.length, 0);
@@ -171,7 +171,7 @@ describe('interactiveReview', () => {
   it('handles mixed finding types: batch report + interactive', async () => {
     const findings: Finding[] = [
       { category: 'weak', item: makeItem({ id: '1' }), score: 1, reasons: ['short'] },
-      { category: 'folders', item: makeItem({ id: '2' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: '2' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
       { category: 'missing', item: makeItem({ id: '3' }), missingFields: ['username'] },
     ];
     const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([0]) }));
@@ -181,8 +181,8 @@ describe('interactiveReview', () => {
 
   it('deduplicates create_folder ops across multiple folder findings', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: '1' }), suggestedFolder: 'Banking', existingFolderId: null },
-      { category: 'folders', item: makeItem({ id: '2' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: '1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+      { category: 'folders', item: makeItem({ id: '2' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([0, 0]) }));
     const createOps = result.ops.filter(op => op.kind === 'create_folder');
@@ -217,7 +217,7 @@ describe('interactiveReview', () => {
 
   it('"choose different folder" produces correct PendingOp', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({
       prompt: makeMockPrompt([1, 1]),
@@ -234,7 +234,7 @@ describe('interactiveReview', () => {
 
   it('"choose different folder" uses existing folder ID when folder exists', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const existingFolders = new Map([['email', 'folder-email-id']]);
     const result = await interactiveReview(findings, opts({
@@ -253,7 +253,7 @@ describe('interactiveReview', () => {
 
   it('cancels when user presses Ctrl+C on folder choice select', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({
       prompt: makeMockPrompt([1, null]),
@@ -286,9 +286,65 @@ describe('interactiveReview', () => {
     assert.ok(logged.some(m => m.includes('Informational')));
   });
 
+  it('suppresses rule capture prompts after user selects "don\'t ask again" on first folder override', async () => {
+    const findings: Finding[] = [
+      { category: 'folders', item: makeItem({ id: 'item-1', name: 'Item 1', login: { uris: [{ match: null, uri: 'https://bank.com' }], username: 'u', password: 'p', totp: null } }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+      { category: 'folders', item: makeItem({ id: 'item-2', name: 'Item 2', login: { uris: [{ match: null, uri: 'https://shop.com' }], username: 'u', password: 'p', totp: null } }), suggestedFolder: 'Shopping', existingFolderId: null, matchReason: { matchedKeyword: 'shop', ruleSource: 'builtin' } },
+    ];
+    let selectCallCount = 0;
+    const basePrompt = makeMockPrompt([
+      1, 1, 2,
+      1, 1,
+    ]);
+    const countingPrompt: PromptAdapter = {
+      ...basePrompt,
+      async select<T>(msg: string, options: SelectOption<T>[]): Promise<T | null> {
+        selectCallCount++;
+        return basePrompt.select(msg, options);
+      },
+    };
+    const ruleSaves: string[] = [];
+    const result = await interactiveReview(findings, opts({
+      prompt: countingPrompt,
+      enabledCategories: ['Banking & Finance', 'Email', 'Social'],
+      onRuleSave: async (req) => { ruleSaves.push(req.keyword); },
+    }));
+    assert.equal(result.reviewed, 2);
+    assert.equal(selectCallCount, 5);
+    assert.equal(ruleSaves.length, 0);
+  });
+
+  it('calls onRuleSave when user saves a rule on folder override (not suppressed)', async () => {
+    const findings: Finding[] = [
+      { category: 'folders', item: makeItem({ id: 'item-1', name: 'Item 1', login: { uris: [{ match: null, uri: 'https://bank.com' }], username: 'u', password: 'p', totp: null } }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+      { category: 'folders', item: makeItem({ id: 'item-2', name: 'Item 2', login: { uris: [{ match: null, uri: 'https://shop.com' }], username: 'u', password: 'p', totp: null } }), suggestedFolder: 'Shopping', existingFolderId: null, matchReason: { matchedKeyword: 'shop', ruleSource: 'builtin' } },
+    ];
+    let selectCallCount = 0;
+    const basePrompt = makeMockPrompt([
+      1, 1, 0,
+      1, 1, 0,
+    ]);
+    const countingPrompt: PromptAdapter = {
+      ...basePrompt,
+      async select<T>(msg: string, options: SelectOption<T>[]): Promise<T | null> {
+        selectCallCount++;
+        return basePrompt.select(msg, options);
+      },
+    };
+    const ruleSaves: string[] = [];
+    const result = await interactiveReview(findings, opts({
+      prompt: countingPrompt,
+      enabledCategories: ['Banking & Finance', 'Email', 'Social'],
+      onRuleSave: async (req) => { ruleSaves.push(req.keyword); },
+    }));
+    assert.equal(result.reviewed, 2);
+    assert.equal(selectCallCount, 6);
+    assert.equal(ruleSaves.length, 2);
+  });
+
   it('accepts folder with existingFolderId — no create_folder op emitted', async () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: 'folder-abc' },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: 'folder-abc', matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({ prompt: makeMockPrompt([0]) }));
     assert.equal(result.ops.length, 1);

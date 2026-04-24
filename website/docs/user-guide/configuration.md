@@ -112,7 +112,7 @@ Every section is optional. Missing sections use their defaults.
 }
 ```
 
-Custom rules are matched against item names and URIs. They take priority over built-in categories.
+Custom rules are matched against item names and URIs. They take priority over built-in categories. Rules can also be captured interactively during an audit — when you override a folder suggestion, seiton offers to save a new rule to your config file (see [Analyzers > Interactive Rule Capture](./analyzers.md#interactive-rule-capture)).
 
 ### `ui` — User interface
 

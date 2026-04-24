@@ -252,7 +252,8 @@ describe('analyzeItems', () => {
       if (f.category === 'folders') {
         assert.equal(f.item.id, 'github-item');
         assert.equal(f.suggestedFolder, 'Development');
-        assert.equal('matchedRule' in f, false, 'FolderFinding should not have matchedRule property');
+        assert.equal(f.matchReason.ruleSource, 'builtin');
+        assert.equal(f.matchReason.matchedKeyword, 'github');
       }
     });
 
@@ -276,6 +277,8 @@ describe('analyzeItems', () => {
       if (folders[0]!.category === 'folders') {
         assert.equal(folders[0].item.id, 'custom-item');
         assert.equal(folders[0].suggestedFolder, 'Crypto');
+        assert.equal(folders[0].matchReason.ruleSource, 'custom');
+        assert.equal(folders[0].matchReason.matchedKeyword, 'crypto');
       }
     });
 

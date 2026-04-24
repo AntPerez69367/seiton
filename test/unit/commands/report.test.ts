@@ -58,6 +58,8 @@ describe('formatFindingsText', () => {
       category: 'folders',
       item: makeFakeItem(),
       suggestedFolder: 'Banking & Finance',
+      existingFolderId: null,
+      matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' },
     };
     const output = formatFindingsText([finding]);
     assert.ok(output.includes('[folders]'));

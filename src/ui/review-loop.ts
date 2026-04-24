@@ -6,6 +6,7 @@ import type { Logger } from '../adapters/logging.js';
 import type { PromptAdapter } from './prompts.js';
 import type { BwItem } from '../lib/domain/types.js';
 import { renderBatchReport } from './batch-report.js';
+import { formatMatchReason, offerRuleCapture } from './rule-capture.js';
 
 export interface ReviewOptions {
   skipCategories: readonly string[];
@@ -74,12 +75,18 @@ export function collectOpsFromFindings(
   return { ops, reviewed, skipped, cancelled: false };
 }
 
+export interface RuleSaveRequest {
+  folder: string;
+  keyword: string;
+}
+
 export interface InteractiveReviewOptions extends ReviewOptions {
   prompt: PromptAdapter;
   maskChar: string;
   enabledCategories: readonly string[];
   existingFoldersByName: ReadonlyMap<string, string>;
   onProgress?: (ops: readonly PendingOp[]) => void;
+  onRuleSave?: (request: RuleSaveRequest) => Promise<void>;
 }
 
 export async function interactiveReview(
@@ -124,6 +131,8 @@ export async function interactiveReview(
     prompt, maskChar, foldersNeeded,
     enabledCategories: opts.enabledCategories,
     existingFoldersByName: opts.existingFoldersByName,
+    onRuleSave: opts.onRuleSave,
+    ruleCaptureSuppressed: false,
   };
 
   for (let i = 0; i < actionable.length; i++) {
@@ -148,6 +157,8 @@ interface ReviewContext {
   foldersNeeded: Set<string>;
   enabledCategories: readonly string[];
   existingFoldersByName: ReadonlyMap<string, string>;
+  onRuleSave?: (request: RuleSaveRequest) => Promise<void>;
+  ruleCaptureSuppressed: boolean;
 }
 
 export function itemLabel(item: BwItem): string {
@@ -208,8 +219,9 @@ async function presentFolder(
   finding: Extract<Finding, { category: 'folders' }>,
   ctx: ReviewContext,
 ): Promise<FindingAction> {
+  const reason = formatMatchReason(finding.matchReason);
   const action = await ctx.prompt.select<'accept' | 'choose' | 'skip'>(
-    `Assign "${itemLabel(finding.item)}" to folder "${finding.suggestedFolder}"?`,
+    `Assign "${itemLabel(finding.item)}" to folder "${finding.suggestedFolder}"? (${reason})`,
     [
       { value: 'accept', label: 'Accept', hint: `move to ${finding.suggestedFolder}` },
       { value: 'choose', label: 'Choose a different folder…' },
@@ -245,6 +257,11 @@ async function handleFolderChoice(
     options,
   );
   if (chosen === null) return 'cancel';
+
+  if (ctx.onRuleSave && !ctx.ruleCaptureSuppressed && chosen !== finding.suggestedFolder) {
+    const result = await offerRuleCapture(finding.item, chosen, ctx.prompt, ctx.onRuleSave);
+    if (result === 'suppressed') ctx.ruleCaptureSuppressed = true;
+  }
 
   const existingId = ctx.existingFoldersByName.get(chosen.toLowerCase()) ?? null;
   return buildFolderOps(finding.item.id, chosen, existingId, ctx.foldersNeeded);

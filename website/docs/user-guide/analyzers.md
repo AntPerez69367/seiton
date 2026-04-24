@@ -68,6 +68,37 @@ Suggests folder assignments for unfiled items based on keyword matching against 
 1. **Custom rules** (evaluated first) — your own keyword-to-folder mappings
 2. **Built-in categories** — ten predefined categories covering common item types
 
+### Match Transparency
+
+Every folder suggestion includes the reason it was made. During interactive review, the prompt shows which keyword triggered the match and whether it came from a built-in or custom rule:
+
+```
+Assign "GitHub" to folder "Development"? (matched keyword: github)
+```
+
+For custom rules the label changes to reflect the source:
+
+```
+Assign "Acme Portal" to folder "Work"? (matched custom rule: acme.internal)
+```
+
+This makes it easy to understand why a suggestion was made and whether your rules are working as expected.
+
+### Interactive Rule Capture
+
+When you override a folder suggestion by choosing a different folder, seiton offers to save your choice as a custom rule:
+
+```
+Save rule so items matching "example.com" go to "Work" next time?
+  ● Yes   — adds custom rule: example.com → Work
+  ○ No
+  ○ Don't ask again this session
+```
+
+Selecting **Yes** appends a new entry to `folders.custom_rules` in your config file. The keyword is extracted from the item's primary URI hostname (stripping `www.`), or falls back to the item name if no URI is present.
+
+Selecting **Don't ask again this session** suppresses the rule-capture prompt for the remainder of the audit session without affecting future sessions.
+
 ### Built-in Categories
 
 Banking & Finance, Email, Social, Shopping, Development, Entertainment, Utilities, Government & ID, Health, and Other.
@@ -92,6 +123,8 @@ Custom rules example:
   }
 }
 ```
+
+Custom rules can be added manually or captured interactively during an audit (see [Interactive Rule Capture](#interactive-rule-capture) above).
 
 ## Output Redaction
 

@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.3.10] - 2026-04-24
+
+### Added
+- Milestone 16: Folder classifier transparency & interactive rule capture. (M16)
 ## [0.3.9] - 2026-04-24
 
 ### Added

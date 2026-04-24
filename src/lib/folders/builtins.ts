@@ -118,12 +118,18 @@ function containsAsWord(text: string, keyword: string): boolean {
   return false;
 }
 
+export type ClassifyResult = {
+  readonly folder: string;
+  readonly matchedKeyword: string;
+  readonly ruleSource: 'builtin' | 'custom';
+};
+
 export function classifyItem(
   name: string,
   uris: readonly string[],
   customRules: readonly CustomRule[],
   enabledCategories: readonly string[],
-): string | null {
+): ClassifyResult | null {
   const searchable = [
     name.toLowerCase(),
     ...uris.map((u) => u.toLowerCase()),
@@ -133,7 +139,9 @@ export function classifyItem(
     for (const keyword of rule.keywords) {
       const lower = keyword.toLowerCase();
       for (const text of searchable) {
-        if (containsAsWord(text, lower)) return rule.folder;
+        if (containsAsWord(text, lower)) {
+          return { folder: rule.folder, matchedKeyword: keyword, ruleSource: 'custom' };
+        }
       }
     }
   }
@@ -145,7 +153,9 @@ export function classifyItem(
     for (const keyword of rule.keywords) {
       const lower = keyword.toLowerCase();
       for (const text of searchable) {
-        if (containsAsWord(text, lower)) return rule.folder;
+        if (containsAsWord(text, lower)) {
+          return { folder: rule.folder, matchedKeyword: keyword, ruleSource: 'builtin' };
+        }
       }
     }
   }

@@ -76,7 +76,7 @@ describe('collectOpsFromFindings', () => {
   it('creates folder ops for folder findings', () => {
     const item = makeItem({ id: 'item-1' });
     const findings: Finding[] = [
-      { category: 'folders', item, suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item, suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = collectOpsFromFindings(findings, {
       skipCategories: [],
@@ -89,8 +89,8 @@ describe('collectOpsFromFindings', () => {
 
   it('deduplicates create_folder ops for same folder', () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: '1' }), suggestedFolder: 'Banking', existingFolderId: null },
-      { category: 'folders', item: makeItem({ id: '2' }), suggestedFolder: 'Banking', existingFolderId: null },
+      { category: 'folders', item: makeItem({ id: '1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+      { category: 'folders', item: makeItem({ id: '2' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = collectOpsFromFindings(findings, {
       skipCategories: [],
@@ -102,7 +102,7 @@ describe('collectOpsFromFindings', () => {
 
   it('skips create_folder when existingFolderId is set', () => {
     const findings: Finding[] = [
-      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: 'folder-123' },
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: 'folder-123', matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = collectOpsFromFindings(findings, {
       skipCategories: [],

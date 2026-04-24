@@ -35,11 +35,17 @@ export type MissingFinding = {
   readonly missingFields: readonly string[];
 };
 
+export type MatchReason = {
+  readonly matchedKeyword: string;
+  readonly ruleSource: 'builtin' | 'custom';
+};
+
 export type FolderFinding = {
   readonly category: 'folders';
   readonly item: BwItem;
   readonly suggestedFolder: string;
   readonly existingFolderId: string | null;
+  readonly matchReason: MatchReason;
 };
 
 export type Finding =
@@ -82,8 +88,9 @@ export function makeFolderFinding(
   item: BwItem,
   folder: string,
   existingFolderId: string | null = null,
+  matchReason: MatchReason = { matchedKeyword: '', ruleSource: 'builtin' },
 ): FolderFinding {
-  return { category: 'folders', item, suggestedFolder: folder, existingFolderId };
+  return { category: 'folders', item, suggestedFolder: folder, existingFolderId, matchReason };
 }
 
 export function isFindingCategory(value: string): value is FindingCategory {

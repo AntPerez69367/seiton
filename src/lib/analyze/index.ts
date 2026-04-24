@@ -161,15 +161,20 @@ function findFolderSuggestions(
     const uris = (item.login?.uris ?? [])
       .map((u) => u.uri)
       .filter((u): u is string => u !== null);
-    const folder = classifyItem(
+    const result = classifyItem(
       item.name,
       uris,
       config.custom_rules,
       config.enabled_categories,
     );
-    if (folder) {
-      const existing = existingByName.get(folder.toLowerCase()) ?? null;
-      findings.push(makeFolderFinding(item, existing?.name ?? folder, existing?.id ?? null));
+    if (result) {
+      const existing = existingByName.get(result.folder.toLowerCase()) ?? null;
+      findings.push(makeFolderFinding(
+        item,
+        existing?.name ?? result.folder,
+        existing?.id ?? null,
+        { matchedKeyword: result.matchedKeyword, ruleSource: result.ruleSource },
+      ));
     }
   }
   return findings;

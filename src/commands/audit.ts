@@ -10,14 +10,18 @@ import { ExitCode } from '../exit-codes.js';
 import { VERSION } from '../version.js';
 import { runPreflight } from './preflight.js';
 import { applyOps } from './apply.js';
-import { collectOpsFromFindings, interactiveReview } from '../ui/review-loop.js';
+import { collectOpsFromFindings, interactiveReview, type RuleSaveRequest } from '../ui/review-loop.js';
 import { savePendingOps, resolvePendingPath } from './pending-io.js';
 import { registerCleanup } from '../core/signals.js';
 import { createPromptAdapter, type PromptAdapter } from '../ui/prompts.js';
 import { analyzeItems } from '../lib/analyze/index.js';
+import { addCustomRule } from '../config/rules.js';
+import { resolveConfigHome } from '../config/paths.js';
+import { join } from 'node:path';
 
 export interface AuditOptions {
   config: Config;
+  configFilePath: string | null;
   bw: BwAdapter;
   fs: FsAdapter;
   clock: Clock;
@@ -123,6 +127,22 @@ async function executeAuditPipeline(
   ];
   const limitPerCategory = cliLimit ?? config.audit.limit_per_category;
 
+  const configForWrite = opts.configFilePath
+    ?? join(resolveConfigHome(), 'seiton', 'config.json');
+
+  const onRuleSave = async (request: RuleSaveRequest): Promise<void> => {
+    const result = await addCustomRule(
+      configForWrite,
+      { folder: request.folder, keywords: [request.keyword] },
+      logger,
+    );
+    if (result.ok) {
+      prompt.logSuccess(`Rule saved: "${request.keyword}" → ${request.folder}`);
+    } else {
+      prompt.logWarning(`Could not save rule: ${result.error}`);
+    }
+  };
+
   const reviewResult = await runReview(findings, {
     skipCategories,
     limitPerCategory,
@@ -133,6 +153,7 @@ async function executeAuditPipeline(
     enabledCategories: config.folders.enabled_categories,
     existingFoldersByName,
     onProgress: (ops) => setPendingOps([...ops]),
+    onRuleSave,
   });
 
   logger.info('audit: review complete', {
@@ -231,6 +252,7 @@ interface RunReviewOpts {
   enabledCategories: readonly string[];
   existingFoldersByName: ReadonlyMap<string, string>;
   onProgress?: (ops: readonly PendingOp[]) => void;
+  onRuleSave?: (request: RuleSaveRequest) => Promise<void>;
 }
 
 async function runReview(
@@ -254,6 +276,7 @@ async function runReview(
     enabledCategories: opts.enabledCategories,
     existingFoldersByName: opts.existingFoldersByName,
     onProgress: opts.onProgress,
+    onRuleSave: opts.onRuleSave,
   });
 }
 
