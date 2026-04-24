@@ -21,6 +21,16 @@ Verify the installation:
 seiton --version
 ```
 
+## Verify Integrity (Optional)
+
+You can verify the downloaded package against published checksums:
+
+```bash
+curl -LO "https://github.com/AntPerez69367/seiton/releases/download/v$(seiton --version)/SHA256SUMS"
+curl -LO "https://github.com/AntPerez69367/seiton/releases/download/v$(seiton --version)/seiton-$(seiton --version).tgz"
+sha256sum -c SHA256SUMS
+```
+
 ## Platform Support
 
 | Platform | Status |

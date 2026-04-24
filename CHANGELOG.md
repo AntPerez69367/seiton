@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Narrowed bare `catch` in `src/commands/audit.ts` pending-file removal to only ignore ENOENT/NOT_FOUND; non-ENOENT errors now logged via `logger.warn('audit: failed to remove pending file after successful apply', ...)`.
 - `ensureConfigFileExists` in `src/commands/config-edit.ts` now re-throws non-ENOENT errors instead of silently swallowing them.
 - Expanded `UNSAFE_PATTERNS` in `src/adapters/logging.ts` to redact `*_CREDENTIAL*`, `*_AUTH`, `*API_KEY*`, and `*PASSPHRASE` context keys (defense-in-depth).
+- Rewrote `website/docs/user-guide/commands.md` with complete flag tables, exit codes, and usage for all 6 CLI commands (audit, resume, discard, report, doctor, config) including all config subcommands (show, get, set, path, edit, reset). Removed incorrect `--fix` flag from doctor. Added exit code reference table. (M14)
 ## [0.3.7] - 2026-04-21
 
 ### Added

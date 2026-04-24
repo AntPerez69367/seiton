@@ -4,42 +4,69 @@ sidebar_position: 1
 
 # User Guide Overview
 
-seiton performs five types of analysis on your Bitwarden vault:
+seiton audits your Bitwarden vault by running five analyzers, presenting each finding interactively, and applying approved changes through the `bw` CLI.
 
-## Analyzers
+## The Audit Workflow
 
-### Duplicate Detection
-
-Finds items that share the same domain and username (exact duplicates) or have very similar names (near duplicates using Levenshtein distance). You choose which to keep and which to delete.
-
-### Password Strength
-
-Evaluates passwords using [zxcvbn](https://github.com/dropbox/zxcvbn) scoring plus configurable heuristics (minimum length, character class requirements). Flags weak entries so you know what to rotate.
-
-### Password Reuse
-
-Groups items that share the same password (compared by SHA-256 hash — the plaintext is never logged). Highlights the risk of credential-stuffing attacks.
-
-### Missing Fields
-
-Identifies login items without URIs, items without usernames, and other incomplete entries that reduce the usefulness of browser auto-fill.
-
-### Folder Classification
-
-Suggests folder assignments for unfiled items based on keyword matching against item names and URIs. Uses built-in category rules (Banking, Email, Social, etc.) and any custom rules you configure.
-
-## Workflow
+The `seiton audit` command runs through five phases:
 
 ```
-Fetch vault → Analyze → Present findings → You approve/reject → Apply changes
+1. Fetch  →  2. Analyze  →  3. Review  →  4. Apply  →  5. Sync
 ```
 
-Every step is transparent. seiton never makes changes without your explicit per-item approval.
+### 1. Fetch
+
+seiton calls `bw list items` and `bw list folders` to read your vault. All data stays in memory — nothing is written to disk at this stage. The output is validated with strict schemas to ensure data integrity.
+
+### 2. Analyze
+
+Five analyzers run against the fetched data:
+
+- **[Duplicate detection](/docs/user-guide/analyzers#duplicate-detection)** — exact and near-duplicate items
+- **[Password strength](/docs/user-guide/analyzers#password-strength)** — weak passwords by length, complexity, and zxcvbn score
+- **[Password reuse](/docs/user-guide/analyzers#password-reuse)** — items sharing the same password
+- **[Missing fields](/docs/user-guide/analyzers#missing-fields)** — items without URIs, usernames, or other key fields
+- **[Folder classification](/docs/user-guide/analyzers#folder-classification)** — suggested folder assignments for unfiled items
+
+Analysis is pure computation with no side effects. The same vault input always produces identical findings.
+
+### 3. Review
+
+Each finding is presented interactively. You approve or reject proposed changes one at a time — there is no `--force` or `--yes-to-all` flag. Approved actions are queued as pending operations.
+
+You can skip entire categories with `--skip <category>` or cap the number of findings per category with `--limit <n>`.
+
+### 4. Apply
+
+Approved changes are applied serially through `bw`. Each operation (delete item, create folder, assign folder) is executed one at a time. If an operation fails, remaining operations are saved to the pending queue for later retry with `seiton resume`.
+
+Use `--dry-run` to see what would be changed without applying anything.
+
+### 5. Sync
+
+After all operations complete, seiton triggers `bw sync` to push changes to the Bitwarden server. This is fire-and-forget — sync failures produce a warning but do not affect the exit code.
+
+## Interrupt Recovery
+
+If you press Ctrl+C during an audit, seiton saves unfinished operations to a pending-ops queue file (when `audit.save_pending_on_sigint` is enabled, which is the default). The queue stores only operation kinds and item IDs — never passwords or secrets.
+
+- **`seiton resume`** — review and apply the saved queue
+- **`seiton discard`** — delete the queue without applying
+
+## Read-Only Mode
+
+`seiton report` runs the same analyzers but skips the review and apply phases. It outputs findings as text or JSON (`--json`) and does not require a TTY. This is useful for CI pipelines, scripted audits, or previewing findings before a full interactive audit.
+
+```bash
+seiton report --json | jq '.findings[] | select(.category == "weak")'
+```
 
 ## Security Model
 
-- seiton accesses your vault exclusively through the `bw` CLI
+- seiton accesses your vault exclusively through the `bw` CLI — it never calls the Bitwarden API directly
 - It never handles your master password
-- Plaintext secrets never reach disk, logs, or network
-- The pending-ops queue stores only item IDs and operation kinds — no passwords
-- All files seiton writes use mode `0600`
+- Plaintext secrets (passwords, TOTP seeds, notes) never reach disk, logs, or network
+- The pending-ops queue stores only item IDs and operation kinds
+- JSON output redacts passwords, TOTP seeds, and embedded URI credentials
+- All files seiton writes use mode `0600` (owner read/write only)
+- Log output sanitizes sensitive values before writing
