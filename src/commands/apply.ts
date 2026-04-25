@@ -15,6 +15,7 @@ export interface ApplyProgress {
 
 export interface PhaseTiming {
   count: number;
+  succeeded: number;
   durationMs: number;
 }
 
@@ -53,9 +54,9 @@ export async function applyOps(
   let overallIdx = 0;
 
   const timings: ApplyTimings = {
-    create_folder: { count: createOps.length, durationMs: 0 },
-    assign_folder: { count: assignOps.length, durationMs: 0 },
-    delete_item: { count: deleteOps.length, durationMs: 0 },
+    create_folder: { count: createOps.length, succeeded: 0, durationMs: 0 },
+    assign_folder: { count: assignOps.length, succeeded: 0, durationMs: 0 },
+    delete_item: { count: deleteOps.length, succeeded: 0, durationMs: 0 },
     totalDurationMs: 0,
   };
 
@@ -76,6 +77,7 @@ export async function applyOps(
     if (result.ok) {
       folderIdMap.set(op.folderName, result.data);
       applied++;
+      timings.create_folder.succeeded++;
       onApplied?.(op);
     } else {
       logger?.error('apply: create folder failed', { folderName: op.folderName, error: result.error.message });
@@ -118,6 +120,7 @@ export async function applyOps(
     const result = await bw.editItem(session, op.itemId, encoded);
     if (result.ok) {
       applied++;
+      timings.assign_folder.succeeded++;
       onApplied?.(op);
     } else {
       const persistOp = folderId !== op.folderId ? { ...op, folderId } : op;
@@ -131,7 +134,7 @@ export async function applyOps(
   for (let i = 0; i < deleteOps.length; i++) {
     const op = deleteOps[i];
     overallIdx++;
-    onProgress?.({ phase: 'delete_item', current: i + 1, phaseTotal: deleteOps.length, overallCurrent: overallIdx, overallTotal: totalOps, description: op.itemId, failedSoFar: failed.length });
+    onProgress?.({ phase: 'delete_item', current: i + 1, phaseTotal: deleteOps.length, overallCurrent: overallIdx, overallTotal: totalOps, description: op.label ?? op.itemId, failedSoFar: failed.length });
 
     const idx = remaining.indexOf(op);
     if (idx >= 0) remaining.splice(idx, 1);
@@ -140,6 +143,7 @@ export async function applyOps(
     const result = await bw.deleteItem(session, op.itemId);
     if (result.ok) {
       applied++;
+      timings.delete_item.succeeded++;
       onApplied?.(op);
     } else {
       logger?.error('apply: delete item failed', { itemId: op.itemId, error: result.error.message });

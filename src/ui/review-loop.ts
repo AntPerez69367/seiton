@@ -52,7 +52,7 @@ export function collectOpsFromFindings(
       case 'duplicates': {
         const [, ...dupes] = finding.items;
         for (const dupe of dupes) {
-          ops.push(makeDeleteItemOp(dupe.id));
+          ops.push(makeDeleteItemOp(dupe.id, itemLabel(dupe)));
         }
         break;
       }
@@ -138,7 +138,7 @@ export async function interactiveReview(
     } else {
       for (const op of dupResult.ops) ops.push(op);
       reviewed += duplicates.length;
-      onProgress?.(ops);
+      if (dupResult.ops.length > 0) onProgress?.(ops);
     }
   }
 
@@ -219,7 +219,13 @@ async function handleFolderChoice(
   finding: Extract<Finding, { category: 'folders' }>,
   ctx: ReviewContext,
 ): Promise<FindingAction> {
-  const options = ctx.enabledCategories.map(name => ({
+  if (ctx.enabledCategories.length === 0) return 'skip';
+
+  const categories = ctx.enabledCategories.includes(finding.suggestedFolder)
+    ? ctx.enabledCategories
+    : [finding.suggestedFolder, ...ctx.enabledCategories];
+
+  const options = categories.map(name => ({
     value: name,
     label: name,
     hint: name === finding.suggestedFolder ? 'suggested' : undefined,

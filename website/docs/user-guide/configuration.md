@@ -98,10 +98,10 @@ Every section is optional. Missing sections use their defaults.
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | `preserve_existing` | boolean | `true` | Skip items that already have a folder assignment |
-| `enabled_categories` | string[] | All 10 built-in | Which built-in categories to suggest |
+| `enabled_categories` | string[] | All 9 built-in | Which built-in categories to suggest |
 | `custom_rules` | object[] | `[]` | User-defined keyword-to-folder rules (evaluated before built-ins) |
 
-**Built-in categories:** Banking & Finance, Email, Social, Shopping, Development, Entertainment, Utilities, Government & ID, Health, Other.
+**Built-in categories:** Banking & Finance, Email, Social, Shopping, Development, Entertainment, Utilities, Government & ID, Health.
 
 **Custom rule format:**
 

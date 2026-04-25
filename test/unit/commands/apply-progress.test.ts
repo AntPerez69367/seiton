@@ -65,9 +65,9 @@ describe('formatProgressMessage', () => {
 describe('formatApplySummary', () => {
   it('formats a summary with all three phases', () => {
     const timings: ApplyTimings = {
-      create_folder: { count: 5, durationMs: 1200 },
-      assign_folder: { count: 30, durationMs: 8400 },
-      delete_item: { count: 7, durationMs: 2100 },
+      create_folder: { count: 5, succeeded: 5, durationMs: 1200 },
+      assign_folder: { count: 30, succeeded: 30, durationMs: 8400 },
+      delete_item: { count: 7, succeeded: 7, durationMs: 2100 },
       totalDurationMs: 11700,
     };
     const summary = formatApplySummary(timings, 0);
@@ -80,20 +80,22 @@ describe('formatApplySummary', () => {
 
   it('includes failure count in total line', () => {
     const timings: ApplyTimings = {
-      create_folder: { count: 2, durationMs: 500 },
-      assign_folder: { count: 3, durationMs: 900 },
-      delete_item: { count: 0, durationMs: 0 },
+      create_folder: { count: 2, succeeded: 1, durationMs: 500 },
+      assign_folder: { count: 3, succeeded: 2, durationMs: 900 },
+      delete_item: { count: 0, succeeded: 0, durationMs: 0 },
       totalDurationMs: 1400,
     };
     const summary = formatApplySummary(timings, 2);
     assert.ok(summary.includes('(2 failed)'));
+    assert.ok(summary.includes('Created folders: 1/2'));
+    assert.ok(summary.includes('Assigned folders: 2/3'));
   });
 
   it('omits phases with zero operations', () => {
     const timings: ApplyTimings = {
-      create_folder: { count: 0, durationMs: 0 },
-      assign_folder: { count: 10, durationMs: 3000 },
-      delete_item: { count: 0, durationMs: 0 },
+      create_folder: { count: 0, succeeded: 0, durationMs: 0 },
+      assign_folder: { count: 10, succeeded: 10, durationMs: 3000 },
+      delete_item: { count: 0, succeeded: 0, durationMs: 0 },
       totalDurationMs: 3000,
     };
     const summary = formatApplySummary(timings, 0);
@@ -105,9 +107,9 @@ describe('formatApplySummary', () => {
 
   it('formats sub-second durations in milliseconds', () => {
     const timings: ApplyTimings = {
-      create_folder: { count: 1, durationMs: 150 },
-      assign_folder: { count: 0, durationMs: 0 },
-      delete_item: { count: 0, durationMs: 0 },
+      create_folder: { count: 1, succeeded: 1, durationMs: 150 },
+      assign_folder: { count: 0, succeeded: 0, durationMs: 0 },
+      delete_item: { count: 0, succeeded: 0, durationMs: 0 },
       totalDurationMs: 150,
     };
     const summary = formatApplySummary(timings, 0);
@@ -117,21 +119,22 @@ describe('formatApplySummary', () => {
 
   it('handles all-failed scenario', () => {
     const timings: ApplyTimings = {
-      create_folder: { count: 3, durationMs: 900 },
-      assign_folder: { count: 0, durationMs: 0 },
-      delete_item: { count: 0, durationMs: 0 },
+      create_folder: { count: 3, succeeded: 0, durationMs: 900 },
+      assign_folder: { count: 0, succeeded: 0, durationMs: 0 },
+      delete_item: { count: 0, succeeded: 0, durationMs: 0 },
       totalDurationMs: 900,
     };
     const summary = formatApplySummary(timings, 3);
     assert.ok(summary.includes('(3 failed)'));
     assert.ok(summary.includes('Total: 3 ops'));
+    assert.ok(summary.includes('Created folders: 0/3'));
   });
 
   it('formats exactly 1000ms as seconds (boundary)', () => {
     const timings: ApplyTimings = {
-      create_folder: { count: 2, durationMs: 1000 },
-      assign_folder: { count: 0, durationMs: 0 },
-      delete_item: { count: 0, durationMs: 0 },
+      create_folder: { count: 2, succeeded: 2, durationMs: 1000 },
+      assign_folder: { count: 0, succeeded: 0, durationMs: 0 },
+      delete_item: { count: 0, succeeded: 0, durationMs: 0 },
       totalDurationMs: 1000,
     };
     const summary = formatApplySummary(timings, 0);

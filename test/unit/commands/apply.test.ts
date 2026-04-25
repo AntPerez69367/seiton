@@ -127,8 +127,11 @@ describe('applyOps', () => {
     const result = await applyOps(ops, 'session', bw);
     assert.ok(result.timings);
     assert.equal(result.timings.create_folder.count, 1);
+    assert.equal(result.timings.create_folder.succeeded, 1);
     assert.equal(result.timings.assign_folder.count, 1);
+    assert.equal(result.timings.assign_folder.succeeded, 1);
     assert.equal(result.timings.delete_item.count, 1);
+    assert.equal(result.timings.delete_item.succeeded, 1);
     assert.ok(result.timings.totalDurationMs >= 0);
     assert.ok(result.timings.create_folder.durationMs >= 0);
     assert.ok(result.timings.assign_folder.durationMs >= 0);
@@ -139,8 +142,11 @@ describe('applyOps', () => {
     const bw = makeFakeAdapter();
     const result = await applyOps([], 'session', bw);
     assert.equal(result.timings.create_folder.count, 0);
+    assert.equal(result.timings.create_folder.succeeded, 0);
     assert.equal(result.timings.assign_folder.count, 0);
+    assert.equal(result.timings.assign_folder.succeeded, 0);
     assert.equal(result.timings.delete_item.count, 0);
+    assert.equal(result.timings.delete_item.succeeded, 0);
     assert.ok(result.timings.totalDurationMs >= 0);
   });
 

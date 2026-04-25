@@ -232,8 +232,7 @@
             "Entertainment",
             "Utilities",
             "Government & ID",
-            "Health",
-            "Other"
+            "Health"
           ],
           "description": "Folder categories available for auto-classification",
           "type": "array",

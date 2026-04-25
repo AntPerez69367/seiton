@@ -1,11 +1,11 @@
-import type { BwItem } from '../../src/lib/domain/types.js';
+import { ItemType, type BwItem } from '../../src/lib/domain/types.js';
 
 export function makeItem(overrides: Partial<BwItem> = {}): BwItem {
   return {
     id: 'test-id',
     organizationId: null,
     folderId: null,
-    type: 1,
+    type: ItemType.LOGIN,
     name: 'Test Item',
     notes: null,
     favorite: false,

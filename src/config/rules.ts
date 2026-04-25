@@ -20,8 +20,14 @@ export async function addCustomRule(
     return { ok: false, error: readResult.error };
   }
 
-  const folders = ensureObject(data, 'folders');
-  const existingRules = ensureArray(folders, 'custom_rules');
+  let folders: Record<string, unknown>;
+  let existingRules: unknown[];
+  try {
+    folders = ensureObject(data, 'folders');
+    existingRules = ensureArray(folders, 'custom_rules');
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
 
   existingRules.push({ folder: rule.folder, keywords: [...rule.keywords] });
   folders['custom_rules'] = existingRules;
@@ -36,10 +42,11 @@ function ensureObject(
   key: string,
 ): Record<string, unknown> {
   const val = parent[key];
+  if (val === undefined) return {};
   if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
     return val as Record<string, unknown>;
   }
-  return {};
+  throw new Error(`Config key "${key}" expected an object but got ${typeof val}`);
 }
 
 function ensureArray(
@@ -47,6 +54,7 @@ function ensureArray(
   key: string,
 ): unknown[] {
   const val = parent[key];
+  if (val === undefined) return [];
   if (Array.isArray(val)) return [...val];
-  return [];
+  throw new Error(`Config key "${key}" expected an array but got ${typeof val}`);
 }

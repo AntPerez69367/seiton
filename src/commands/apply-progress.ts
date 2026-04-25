@@ -43,7 +43,10 @@ export function formatApplySummary(timings: ApplyTimings, totalFailed: number): 
     if (t.count === 0) continue;
     const label = SUMMARY_LABELS[phase];
     const duration = formatDuration(t.durationMs);
-    lines.push(`  ${label}: ${t.count} in ${duration}`);
+    const countStr = t.succeeded < t.count
+      ? `${t.succeeded}/${t.count}`
+      : `${t.count}`;
+    lines.push(`  ${label}: ${countStr} in ${duration}`);
   }
 
   const totalDuration = formatDuration(timings.totalDurationMs);

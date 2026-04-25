@@ -49,7 +49,7 @@ const DedupSchema = z.object({
 
 const DEFAULT_CATEGORIES = [
   'Banking & Finance', 'Email', 'Social', 'Shopping', 'Development',
-  'Entertainment', 'Utilities', 'Government & ID', 'Health', 'Other',
+  'Entertainment', 'Utilities', 'Government & ID', 'Health',
 ] as const;
 
 const FoldersSchema = z.object({

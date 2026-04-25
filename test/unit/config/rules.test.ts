@@ -81,4 +81,38 @@ describe('addCustomRule', () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it('returns error when folders key is wrong type', async () => {
+    const dir = tmpPath();
+    const filePath = join(dir, 'config.json');
+    try {
+      await mkdir(dir, { recursive: true });
+      await writeFile(filePath, JSON.stringify({ version: 1, folders: 'not-an-object' }));
+
+      const result = await addCustomRule(filePath, { folder: 'Dev', keywords: ['gh'] });
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.ok(result.error.includes('"folders"'));
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns error when custom_rules key is wrong type', async () => {
+    const dir = tmpPath();
+    const filePath = join(dir, 'config.json');
+    try {
+      await mkdir(dir, { recursive: true });
+      await writeFile(filePath, JSON.stringify({ version: 1, folders: { custom_rules: 'not-an-array' } }));
+
+      const result = await addCustomRule(filePath, { folder: 'Dev', keywords: ['gh'] });
+      assert.equal(result.ok, false);
+      if (!result.ok) {
+        assert.ok(result.error.includes('"custom_rules"'));
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

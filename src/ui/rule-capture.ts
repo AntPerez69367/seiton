@@ -15,7 +15,9 @@ export function extractRuleKeyword(item: BwItem): string {
     const cleaned = hostname.startsWith('www.') ? hostname.slice(4) : hostname;
     if (cleaned) return cleaned;
   }
-  return item.name.toLowerCase();
+  const name = item.name.trim().toLowerCase();
+  if (!name) return '';
+  return name;
 }
 
 export async function offerRuleCapture(
@@ -25,6 +27,7 @@ export async function offerRuleCapture(
   onRuleSave: (request: RuleSaveRequest) => Promise<void>,
 ): Promise<'suppressed' | 'saved' | 'declined'> {
   const keyword = extractRuleKeyword(item);
+  if (!keyword) return 'declined';
   const answer = await prompt.select<'yes' | 'no' | 'never'>(
     `Save rule so items matching "${keyword}" go to "${chosenFolder}" next time?`,
     [

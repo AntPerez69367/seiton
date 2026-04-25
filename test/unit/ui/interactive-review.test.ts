@@ -220,7 +220,7 @@ describe('interactiveReview', () => {
       { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
     ];
     const result = await interactiveReview(findings, opts({
-      prompt: makeMockPrompt([1, 1]),
+      prompt: makeMockPrompt([1, 2]),
       enabledCategories: ['Banking & Finance', 'Email', 'Social'],
     }));
     assert.equal(result.ops.length, 2);
@@ -238,7 +238,7 @@ describe('interactiveReview', () => {
     ];
     const existingFolders = new Map([['email', 'folder-email-id']]);
     const result = await interactiveReview(findings, opts({
-      prompt: makeMockPrompt([1, 1]),
+      prompt: makeMockPrompt([1, 2]),
       enabledCategories: ['Banking & Finance', 'Email', 'Social'],
       existingFoldersByName: existingFolders,
     }));

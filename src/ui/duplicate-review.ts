@@ -88,9 +88,11 @@ export async function presentAllDuplicates(
       if (!confirmed) continue;
     }
 
+    const itemsById = new Map(findings.flatMap(f => f.items.map(i => [i.id, i] as const)));
     const ops: PendingOp[] = [];
     for (const id of deleteSet) {
-      ops.push(makeDeleteItemOp(id));
+      const item = itemsById.get(id);
+      ops.push(makeDeleteItemOp(id, item ? itemLabel(item) : undefined));
     }
     return { ops, skipped: false };
   }

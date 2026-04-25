@@ -28,7 +28,12 @@ You can verify the downloaded package against published checksums:
 ```bash
 curl -LO "https://github.com/AntPerez69367/seiton/releases/download/v$(seiton --version)/SHA256SUMS"
 curl -LO "https://github.com/AntPerez69367/seiton/releases/download/v$(seiton --version)/seiton-$(seiton --version).tgz"
-sha256sum -c SHA256SUMS
+
+# Linux
+sha256sum --ignore-missing -c SHA256SUMS
+
+# macOS
+shasum -a 256 --ignore-missing -c SHA256SUMS
 ```
 
 ## Platform Support
