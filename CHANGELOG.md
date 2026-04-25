@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.3.15] - 2026-04-24
+
+### Added
+- **Interactive batch report category browser (clack + plain):** `renderBatchReport` is now async and presents informational findings via a category-selection prompt. When multiple categories exist (weak, reuse, missing), a `select` prompt lets users pick which category to view. Viewed categories are marked with a "viewed" hint. Users can select "Continue" or press Escape to dismiss. Single-category cases render directly without a select.
 
 ## [0.3.14] - 2026-04-24
 
