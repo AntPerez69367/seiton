@@ -82,7 +82,6 @@ describe('interactiveReview page display path', () => {
     }));
 
     await new Promise(r => setImmediate(r));
-    // Accept the entry and submit via keypress
     emitKey(stdin, 'a');
     await new Promise(r => setImmediate(r));
     emitKey(stdin, 'return');
@@ -90,8 +89,8 @@ describe('interactiveReview page display path', () => {
     const result = await resultPromise;
     assert.equal(result.cancelled, false);
     assert.equal(result.reviewed, 1);
-    const createOp = result.ops.find(o => o.kind === 'create_folder');
-    const assignOp = result.ops.find(o => o.kind === 'assign_folder');
+    const createOp = result.ops.find((o: PendingOp) => o.kind === 'create_folder');
+    const assignOp = result.ops.find((o: PendingOp) => o.kind === 'assign_folder');
     assert.ok(createOp);
     assert.ok(assignOp);
   });
@@ -234,6 +233,127 @@ describe('interactiveReview page display path', () => {
     assert.equal(assigns.length, 1);
     if (assigns[0]!.kind === 'assign_folder') {
       assert.equal(assigns[0]!.folderId, 'folder-existing');
+    }
+  });
+});
+
+describe('interactiveReview edit flow via page display', () => {
+  it('pressing e then selecting a different folder produces assign_folder with overridden name', async () => {
+    const stdin = createFakeStdin();
+    const stdout = createFakeStdout();
+    const findings: Finding[] = [
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+    ];
+
+    let selectCalls = 0;
+    const prompt = createNoopPrompt();
+    prompt.select = async <T>(_msg: string, options: { value: T }[]): Promise<T | null> => {
+      selectCalls++;
+      return options[1]?.value ?? null;
+    };
+
+    const resultPromise = interactiveReview(findings, opts({
+      prompt,
+      promptStyle: 'clack',
+      isTTY: () => true,
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      stdout: stdout as unknown as NodeJS.WriteStream,
+      enabledCategories: ['Banking', 'Email', 'Social'],
+    }));
+
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'e');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'return');
+
+    const result = await resultPromise;
+    assert.equal(result.cancelled, false);
+    assert.equal(result.reviewed, 1);
+    const assigns = result.ops.filter((o: PendingOp) => o.kind === 'assign_folder');
+    assert.equal(assigns.length, 1);
+    if (assigns[0]!.kind === 'assign_folder') {
+      assert.equal(assigns[0]!.folderName, 'Email');
+    }
+  });
+
+  it('cancelling edit returns to page without modifying entry', async () => {
+    const stdin = createFakeStdin();
+    const stdout = createFakeStdout();
+    const findings: Finding[] = [
+      { category: 'folders', item: makeItem({ id: 'item-1' }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+    ];
+
+    let selectCalls = 0;
+    const prompt = createNoopPrompt();
+    prompt.select = async <T>(): Promise<T | null> => {
+      selectCalls++;
+      if (selectCalls === 1) return null;
+      return null;
+    };
+
+    const resultPromise = interactiveReview(findings, opts({
+      prompt,
+      promptStyle: 'clack',
+      isTTY: () => true,
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      stdout: stdout as unknown as NodeJS.WriteStream,
+      enabledCategories: ['Banking', 'Email'],
+    }));
+
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'e');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'q');
+
+    const result = await resultPromise;
+    assert.equal(result.cancelled, true);
+  });
+
+  it('create new folder calls onRuleSave and uses new folder name', async () => {
+    const stdin = createFakeStdin();
+    const stdout = createFakeStdout();
+    const findings: Finding[] = [
+      { category: 'folders', item: makeItem({ id: 'item-1', name: 'My Bank', login: { uris: [{ match: null, uri: 'https://mybank.com' }], username: 'u', password: 'p', totp: null } }), suggestedFolder: 'Banking', existingFolderId: null, matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' } },
+    ];
+
+    let selectCalls = 0;
+    const prompt = createNoopPrompt();
+    prompt.select = async <T>(_msg: string, options: { value: T }[]): Promise<T | null> => {
+      selectCalls++;
+      const lastOption = options[options.length - 1];
+      return lastOption?.value ?? null;
+    };
+    prompt.text = async (): Promise<string | null> => 'Crypto';
+
+    const ruleSaves: { folder: string; keyword: string }[] = [];
+
+    const resultPromise = interactiveReview(findings, opts({
+      prompt,
+      promptStyle: 'clack',
+      isTTY: () => true,
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      stdout: stdout as unknown as NodeJS.WriteStream,
+      enabledCategories: ['Banking', 'Email'],
+      onRuleSave: async (req) => { ruleSaves.push(req); },
+    }));
+
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'e');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'return');
+
+    const result = await resultPromise;
+    assert.equal(result.cancelled, false);
+    assert.equal(ruleSaves.length, 1);
+    assert.equal(ruleSaves[0]!.folder, 'Crypto');
+    assert.equal(ruleSaves[0]!.keyword, 'mybank.com');
+    const assigns = result.ops.filter((o: PendingOp) => o.kind === 'assign_folder');
+    assert.equal(assigns.length, 1);
+    if (assigns[0]!.kind === 'assign_folder') {
+      assert.equal(assigns[0]!.folderName, 'Crypto');
     }
   });
 });

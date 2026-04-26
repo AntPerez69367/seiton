@@ -43,7 +43,9 @@ function formatRow(
   const cursor = isCurrent ? `${INVERSE}>` : ' ';
   const name = truncate(entry.finding.item.name, 30);
   const host = truncate(extractHostname(entry), 20);
-  const folder = truncate(entry.finding.suggestedFolder, 18);
+  const folder = entry.overrideFolder
+    ? truncate(`${entry.finding.suggestedFolder} → ${entry.overrideFolder}`, 18)
+    : truncate(entry.finding.suggestedFolder, 18);
   const badge = decisionBadge(entry.decision);
   const suffix = isCurrent ? RESET : '';
   return `${cursor} ${name.padEnd(30)} ${host.padEnd(20)} ${folder.padEnd(18)} ${badge}${suffix}`;
@@ -73,7 +75,7 @@ export function renderPage(state: FolderPageState): string {
   }
 
   lines.push(
-    `${DIM}↑/↓ navigate | a accept | s skip | d delete | Enter submit | q cancel${RESET}`,
+    `${DIM}↑/↓ navigate | a accept | s skip | d delete | e edit | Enter submit | q cancel${RESET}`,
   );
 
   return lines.join('\n');

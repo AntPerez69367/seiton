@@ -11,11 +11,10 @@ import {
 import { renderPage } from './folder-page-render.js';
 import { pageStateToOps } from './folder-page-ops.js';
 
-export interface FolderPageResult {
-  ops: PendingOp[];
-  cancelled: boolean;
-  deleteCount: number;
-}
+export type FolderPageResult =
+  | { action: 'submit'; ops: PendingOp[]; deleteCount: number }
+  | { action: 'cancel' }
+  | { action: 'edit'; entryIndex: number; state: FolderPageState };
 
 export async function runFolderPage(
   findings: readonly FolderFinding[],
@@ -24,8 +23,9 @@ export async function runFolderPage(
   stdin: NodeJS.ReadStream,
   stdout: NodeJS.WriteStream,
   pageSize?: number,
+  initialState?: FolderPageState,
 ): Promise<FolderPageResult> {
-  let state = createPageState(findings, pageSize);
+  let state = initialState ?? createPageState(findings, pageSize);
   let renderedLineCount = 0;
 
   const clearRendered = () => {
@@ -53,7 +53,11 @@ export async function runFolderPage(
     clearRendered();
 
     if (result.cancelled) {
-      return { ops: [], cancelled: true, deleteCount: 0 };
+      return { action: 'cancel' };
+    }
+
+    if (result.editIndex !== undefined) {
+      return { action: 'edit', entryIndex: result.editIndex, state };
     }
 
     const deleteCount = state.entries.filter(e => e.decision === 'delete').length;
@@ -69,7 +73,7 @@ export async function runFolderPage(
     }
 
     const ops = pageStateToOps(state, existingFoldersByName);
-    return { ops, cancelled: false, deleteCount };
+    return { action: 'submit', ops, deleteCount };
   } finally {
     stdin.setRawMode(wasRaw ?? false);
     stdin.pause();
@@ -78,6 +82,7 @@ export async function runFolderPage(
 
 interface LoopResult {
   cancelled: boolean;
+  editIndex?: number;
 }
 
 function keypressLoop(
@@ -101,6 +106,12 @@ function keypressLoop(
       if (key.name === 'return') {
         cleanup();
         resolve({ cancelled: false });
+        return;
+      }
+
+      if (key.name === 'e') {
+        cleanup();
+        resolve({ cancelled: false, editIndex: state.cursor });
         return;
       }
 

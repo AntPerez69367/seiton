@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.3.17] - 2026-04-26
+
+### Added
+- Installed `zxcvbn-ts` (^2.0.2) and `@zxcvbn-ts/language-en` (^3.0.2) as runtime dependencies (M23)
+
+### Changed
+- Password strength scoring now uses zxcvbn-ts instead of heuristic rules. Passwords that passed heuristic checks but are weak by dictionary/pattern analysis (e.g., "Password1!", "Tr0ub4dor&3") will now be flagged. Falls back to heuristic scoring if zxcvbn-ts is unavailable. (M23)
 
 ## [0.3.16] - 2026-04-26
 

@@ -69,7 +69,7 @@ function createMockPrompt(confirmResult: boolean | null = true): PromptAdapter {
 }
 
 describe('runFolderPage - keypressLoop', () => {
-  it('returns cancelled: true when q is pressed', async () => {
+  it('returns cancel action when q is pressed', async () => {
     const stdin = createFakeStdin();
     const stdout = createFakeStdout();
     const findings = [makeFolderFinding()];
@@ -82,16 +82,14 @@ describe('runFolderPage - keypressLoop', () => {
       stdout as unknown as NodeJS.WriteStream,
     );
 
-    // Allow event listeners to be attached
     await new Promise(r => setImmediate(r));
     emitKey(stdin, 'q');
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, true);
-    assert.deepEqual(result.ops, []);
+    assert.equal(result.action, 'cancel');
   });
 
-  it('returns cancelled: true when Ctrl+C is pressed', async () => {
+  it('returns cancel action when Ctrl+C is pressed', async () => {
     const stdin = createFakeStdin();
     const stdout = createFakeStdout();
     const findings = [makeFolderFinding()];
@@ -108,8 +106,7 @@ describe('runFolderPage - keypressLoop', () => {
     emitKey(stdin, 'c', true);
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, true);
-    assert.deepEqual(result.ops, []);
+    assert.equal(result.action, 'cancel');
   });
 
   it('submits on Enter producing ops for accepted entries', async () => {
@@ -128,18 +125,19 @@ describe('runFolderPage - keypressLoop', () => {
     );
 
     await new Promise(r => setImmediate(r));
-    // Accept the entry then submit
     emitKey(stdin, 'a');
     await new Promise(r => setImmediate(r));
     emitKey(stdin, 'return');
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, false);
-    assert.ok(result.ops.length > 0);
-    const createOp = result.ops.find(o => o.kind === 'create_folder');
-    const assignOp = result.ops.find(o => o.kind === 'assign_folder');
-    assert.ok(createOp);
-    assert.ok(assignOp);
+    assert.equal(result.action, 'submit');
+    if (result.action === 'submit') {
+      assert.ok(result.ops.length > 0);
+      const createOp = result.ops.find(o => o.kind === 'create_folder');
+      const assignOp = result.ops.find(o => o.kind === 'assign_folder');
+      assert.ok(createOp);
+      assert.ok(assignOp);
+    }
   });
 
   it('marks entry as deleted and produces delete_item op after confirmation', async () => {
@@ -152,7 +150,7 @@ describe('runFolderPage - keypressLoop', () => {
     const resultPromise = runFolderPage(
       findings,
       new Map(),
-      createMockPrompt(true), // confirm deletion
+      createMockPrompt(true),
       stdin as unknown as NodeJS.ReadStream,
       stdout as unknown as NodeJS.WriteStream,
     );
@@ -163,12 +161,14 @@ describe('runFolderPage - keypressLoop', () => {
     emitKey(stdin, 'return');
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, false);
-    assert.equal(result.deleteCount, 1);
-    const deleteOp = result.ops.find(o => o.kind === 'delete_item');
-    assert.ok(deleteOp);
-    if (deleteOp.kind === 'delete_item') {
-      assert.equal(deleteOp.itemId, 'del-1');
+    assert.equal(result.action, 'submit');
+    if (result.action === 'submit') {
+      assert.equal(result.deleteCount, 1);
+      const deleteOp = result.ops.find(o => o.kind === 'delete_item');
+      assert.ok(deleteOp);
+      if (deleteOp.kind === 'delete_item') {
+        assert.equal(deleteOp.itemId, 'del-1');
+      }
     }
   });
 
@@ -189,12 +189,10 @@ describe('runFolderPage - keypressLoop', () => {
     );
 
     await new Promise(r => setImmediate(r));
-    // Move down to second item and skip it
     emitKey(stdin, 'j');
     await new Promise(r => setImmediate(r));
     emitKey(stdin, 's');
     await new Promise(r => setImmediate(r));
-    // Move back up and accept first item
     emitKey(stdin, 'k');
     await new Promise(r => setImmediate(r));
     emitKey(stdin, 'a');
@@ -202,10 +200,11 @@ describe('runFolderPage - keypressLoop', () => {
     emitKey(stdin, 'return');
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, false);
-    // Only first item accepted — should produce create + assign ops
-    const assignOps = result.ops.filter(o => o.kind === 'assign_folder');
-    assert.equal(assignOps.length, 1);
+    assert.equal(result.action, 'submit');
+    if (result.action === 'submit') {
+      const assignOps = result.ops.filter(o => o.kind === 'assign_folder');
+      assert.equal(assignOps.length, 1);
+    }
   });
 
   it('restores raw mode state after completion', async () => {
@@ -248,9 +247,40 @@ describe('runFolderPage - keypressLoop', () => {
     emitKey(stdin, 'return');
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, false);
-    assert.deepEqual(result.ops, []);
-    assert.equal(result.deleteCount, 0);
+    assert.equal(result.action, 'submit');
+    if (result.action === 'submit') {
+      assert.deepEqual(result.ops, []);
+      assert.equal(result.deleteCount, 0);
+    }
+  });
+
+  it('returns edit action with entryIndex when e is pressed', async () => {
+    const stdin = createFakeStdin();
+    const stdout = createFakeStdout();
+    const findings = [
+      makeFolderFinding({ item: makeItem({ id: 'item-0' }) }),
+      makeFolderFinding({ item: makeItem({ id: 'item-1' }) }),
+    ];
+
+    const resultPromise = runFolderPage(
+      findings,
+      new Map(),
+      createMockPrompt(),
+      stdin as unknown as NodeJS.ReadStream,
+      stdout as unknown as NodeJS.WriteStream,
+    );
+
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'j');
+    await new Promise(r => setImmediate(r));
+    emitKey(stdin, 'e');
+
+    const result = await resultPromise;
+    assert.equal(result.action, 'edit');
+    if (result.action === 'edit') {
+      assert.equal(result.entryIndex, 1);
+      assert.equal(result.state.entries.length, 2);
+    }
   });
 });
 
@@ -267,8 +297,6 @@ describe('runFolderPage - recursive restart on deletion decline', () => {
     prompt.confirm = async (): Promise<boolean | null> => {
       confirmCallCount++;
       if (confirmCallCount === 1) {
-        // Decline deletion: triggers recursive restart.
-        // Schedule quit key after restart re-renders and re-attaches listeners.
         setTimeout(() => emitKey(stdin, 'q'), 10);
         return false;
       }
@@ -290,7 +318,7 @@ describe('runFolderPage - recursive restart on deletion decline', () => {
 
     const result = await resultPromise;
     assert.equal(confirmCallCount, 1);
-    assert.equal(result.cancelled, true);
+    assert.equal(result.action, 'cancel');
   });
 
   it('proceeds with deletion when confirmation is accepted', async () => {
@@ -303,7 +331,7 @@ describe('runFolderPage - recursive restart on deletion decline', () => {
     const resultPromise = runFolderPage(
       findings,
       new Map(),
-      createMockPrompt(true), // confirm = true
+      createMockPrompt(true),
       stdin as unknown as NodeJS.ReadStream,
       stdout as unknown as NodeJS.WriteStream,
     );
@@ -314,9 +342,11 @@ describe('runFolderPage - recursive restart on deletion decline', () => {
     emitKey(stdin, 'return');
 
     const result = await resultPromise;
-    assert.equal(result.cancelled, false);
-    assert.equal(result.deleteCount, 1);
-    assert.ok(result.ops.some(o => o.kind === 'delete_item'));
+    assert.equal(result.action, 'submit');
+    if (result.action === 'submit') {
+      assert.equal(result.deleteCount, 1);
+      assert.ok(result.ops.some(o => o.kind === 'delete_item'));
+    }
   });
 
   it('does not prompt for confirmation when no deletions', async () => {
@@ -340,7 +370,7 @@ describe('runFolderPage - recursive restart on deletion decline', () => {
     );
 
     await new Promise(r => setImmediate(r));
-    emitKey(stdin, 'a'); // accept, not delete
+    emitKey(stdin, 'a');
     await new Promise(r => setImmediate(r));
     emitKey(stdin, 'return');
 

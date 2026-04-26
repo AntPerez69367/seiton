@@ -29,14 +29,15 @@ export function pageStateToOps(
     switch (entry.decision) {
       case 'accept': {
         const { item, suggestedFolder, existingFolderId } = entry.finding;
-        const folderId = existingFolderId
-          ?? existingFoldersByName.get(suggestedFolder.toLowerCase())
-          ?? null;
-        if (!folderId && !foldersNeeded.has(suggestedFolder)) {
-          foldersNeeded.add(suggestedFolder);
-          ops.push(makeCreateFolderOp(suggestedFolder));
+        const effectiveFolder = entry.overrideFolder ?? suggestedFolder;
+        const folderId = entry.overrideFolder
+          ? existingFoldersByName.get(effectiveFolder.toLowerCase()) ?? null
+          : existingFolderId ?? existingFoldersByName.get(effectiveFolder.toLowerCase()) ?? null;
+        if (!folderId && !foldersNeeded.has(effectiveFolder)) {
+          foldersNeeded.add(effectiveFolder);
+          ops.push(makeCreateFolderOp(effectiveFolder));
         }
-        ops.push(makeAssignFolderOp(item.id, folderId, suggestedFolder));
+        ops.push(makeAssignFolderOp(item.id, folderId, effectiveFolder));
         break;
       }
       case 'delete': {

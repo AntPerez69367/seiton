@@ -7,8 +7,10 @@ import type { PromptAdapter, PromptStyle } from './prompts.js';
 import { renderBatchReport } from './batch-report.js';
 import { presentAllDuplicates } from './duplicate-review.js';
 import { runFolderPage } from './folder-page-loop.js';
+import { setOverride, type FolderPageState } from './folder-page-model.js';
 import { presentFoldersFallback } from './folder-page-fallback.js';
 import { buildFolderOps } from './folder-page-ops.js';
+import { extractRuleKeyword, offerRuleCapture } from './rule-capture.js';
 import { itemLabel } from './item-label.js';
 
 export { buildFolderOps };
@@ -161,19 +163,13 @@ export async function interactiveReview(
     const usePageDisplay = opts.promptStyle !== 'plain' && ttyCheck();
 
     if (usePageDisplay) {
-      const pageResult = await runFolderPage(
-        folders,
-        opts.existingFoldersByName,
-        prompt,
-        opts.stdin!,
-        opts.stdout!,
-      );
-      if (pageResult.cancelled) {
+      const pageOps = await runFolderPageWithEdits(folders, opts);
+      if (pageOps === null) {
         return { ops, reviewed, skipped: skipped + folders.length, cancelled: true };
       }
-      for (const op of pageResult.ops) ops.push(op);
+      for (const op of pageOps) ops.push(op);
       reviewed += folders.length;
-      if (pageResult.ops.length > 0) onProgress?.(ops);
+      if (pageOps.length > 0) onProgress?.(ops);
     } else {
       const folderOps = await presentFoldersFallback(folders, opts);
       if (folderOps.cancelled) {
@@ -186,4 +182,94 @@ export async function interactiveReview(
   }
 
   return { ops, reviewed, skipped, cancelled: false };
+}
+
+async function runFolderPageWithEdits(
+  folders: FolderFinding[],
+  opts: InteractiveReviewOptions,
+): Promise<PendingOp[] | null> {
+  const { prompt, onRuleSave } = opts;
+  const mutableCategories = [...opts.enabledCategories];
+  let ruleCaptureSuppressed = false;
+  let state: FolderPageState | undefined;
+
+  while (true) {
+    const result = await runFolderPage(
+      folders, opts.existingFoldersByName, prompt,
+      opts.stdin!, opts.stdout!, undefined, state,
+    );
+
+    if (result.action === 'cancel') return null;
+
+    if (result.action === 'submit') return result.ops;
+
+    const entry = result.state.entries[result.entryIndex]!;
+    const editResult = await editFolderEntry(
+      entry, mutableCategories, prompt,
+      onRuleSave, ruleCaptureSuppressed,
+    );
+    if (editResult === null) {
+      state = result.state;
+    } else {
+      if (editResult.suppressed) ruleCaptureSuppressed = true;
+      state = setOverride(result.state, result.entryIndex, editResult.folder);
+    }
+  }
+}
+
+interface EditResult {
+  folder: string;
+  suppressed: boolean;
+}
+
+async function editFolderEntry(
+  entry: { readonly finding: FolderFinding },
+  mutableCategories: string[],
+  prompt: PromptAdapter,
+  onRuleSave?: (request: RuleSaveRequest) => Promise<void>,
+  ruleCaptureSuppressed = false,
+): Promise<EditResult | null> {
+  const CREATE_NEW = '__create_new__';
+  const suggested = entry.finding.suggestedFolder;
+  const categories = mutableCategories.includes(suggested)
+    ? mutableCategories
+    : [suggested, ...mutableCategories];
+
+  const options = [
+    ...categories.map(name => ({
+      value: name,
+      label: name,
+      hint: name === suggested ? 'suggested' : undefined,
+    })),
+    { value: CREATE_NEW, label: 'Create new folder…' },
+  ];
+
+  const chosen = await prompt.select<string>(
+    `Select folder for "${entry.finding.item.name}":`,
+    options,
+  );
+  if (chosen === null) return null;
+
+  if (chosen === CREATE_NEW) {
+    const name = await prompt.text('Enter folder name:');
+    if (!name) return null;
+    const keyword = extractRuleKeyword(entry.finding.item);
+    if (onRuleSave && keyword) {
+      await onRuleSave({ folder: name, keyword });
+    }
+    if (!mutableCategories.includes(name)) {
+      mutableCategories.push(name);
+    }
+    return { folder: name, suppressed: false };
+  }
+
+  let suppressed = false;
+  if (onRuleSave && !ruleCaptureSuppressed && chosen !== suggested) {
+    const captureResult = await offerRuleCapture(
+      entry.finding.item, chosen, prompt, onRuleSave,
+    );
+    if (captureResult === 'suppressed') suppressed = true;
+  }
+
+  return { folder: chosen, suppressed };
 }

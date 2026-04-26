@@ -11,6 +11,7 @@ import {
 } from '../domain/finding.js';
 import { dedupKey, dedupKeyMulti } from '../dedup/key.js';
 import { scorePassword, collectWeaknesses, type StrengthConfig } from '../strength/heuristic.js';
+import { zxcvbnScore } from '../strength/zxcvbn.js';
 import { classifyItem, type CustomRuleEntry } from '../folders/builtins.js';
 
 export interface AnalysisConfig {
@@ -105,10 +106,25 @@ function findReusedPasswords(items: readonly BwItem[]): Finding[] {
   return findings;
 }
 
+function probeZxcvbn(): boolean {
+  try {
+    zxcvbnScore('probe', []);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function findWeakPasswords(
   items: readonly BwItem[],
   config: AnalysisConfig['strength'],
+  logger?: { warn(msg: string): void },
 ): Finding[] {
+  const useZxcvbn = probeZxcvbn();
+  if (!useZxcvbn && logger) {
+    logger.warn('zxcvbn-ts unavailable; falling back to heuristic scoring');
+  }
+
   const strengthCfg: StrengthConfig = {
     minLength: config.min_length,
     requireDigit: config.require_digit,
@@ -121,9 +137,20 @@ function findWeakPasswords(
   for (const item of items) {
     const pw = item.login?.password;
     if (!pw) continue;
-    const score = scorePassword(pw, strengthCfg);
+
+    let score: number;
+    let reasons: readonly string[];
+
+    if (useZxcvbn) {
+      const result = zxcvbnScore(pw, config.extra_common_passwords);
+      score = result.score;
+      reasons = result.feedback;
+    } else {
+      score = scorePassword(pw, strengthCfg);
+      reasons = collectWeaknesses(pw, strengthCfg);
+    }
+
     if (score < config.zxcvbn_min_score) {
-      const reasons = collectWeaknesses(pw, strengthCfg);
       findings.push(makeWeakFinding(item, score, reasons));
     }
   }

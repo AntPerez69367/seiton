@@ -4,6 +4,7 @@ import {
   createPageState,
   moveCursor,
   setDecision,
+  setOverride,
   allDecided,
   visibleWindow,
 } from '../../../src/ui/folder-page-model.js';
@@ -285,6 +286,120 @@ describe('buildFolderOps', () => {
     assert.equal(ops[0]!.kind, 'assign_folder');
     if (ops[0]!.kind === 'assign_folder') {
       assert.equal(ops[0]!.folderId, 'folder-abc');
+    }
+  });
+});
+
+describe('setOverride', () => {
+  it('sets overrideFolder on specified entry and marks as accept', () => {
+    const state = createPageState([makeFolderFinding(), makeFolderFinding()]);
+    const next = setOverride(state, 1, 'Email');
+    assert.equal(next.entries[1]!.overrideFolder, 'Email');
+    assert.equal(next.entries[1]!.decision, 'accept');
+  });
+
+  it('preserves other entries unchanged', () => {
+    let state = createPageState([makeFolderFinding(), makeFolderFinding(), makeFolderFinding()]);
+    state = setDecision(state, 'skip');
+    const next = setOverride(state, 2, 'Shopping');
+    assert.equal(next.entries[0]!.decision, 'skip');
+    assert.equal(next.entries[0]!.overrideFolder, undefined);
+    assert.equal(next.entries[1]!.decision, 'pending');
+    assert.equal(next.entries[2]!.overrideFolder, 'Shopping');
+    assert.equal(next.entries[2]!.decision, 'accept');
+  });
+
+  it('preserves cursor and scrollOffset', () => {
+    let state = createPageState([makeFolderFinding(), makeFolderFinding()]);
+    state = moveCursor(state, 1);
+    const next = setOverride(state, 0, 'Email');
+    assert.equal(next.cursor, 1);
+    assert.equal(next.scrollOffset, 0);
+  });
+});
+
+describe('pageStateToOps with overrides', () => {
+  it('uses overrideFolder instead of suggestedFolder', () => {
+    const finding = makeFolderFinding({
+      item: makeItem({ id: 'item-1' }),
+      suggestedFolder: 'Banking',
+      existingFolderId: null,
+    });
+    const state = createPageState([finding]);
+    const next = setOverride(state, 0, 'Email');
+    const ops = pageStateToOps(next, new Map());
+    assert.equal(ops.length, 2);
+    assert.equal(ops[0]!.kind, 'create_folder');
+    if (ops[0]!.kind === 'create_folder') {
+      assert.equal(ops[0]!.folderName, 'Email');
+    }
+    assert.equal(ops[1]!.kind, 'assign_folder');
+    if (ops[1]!.kind === 'assign_folder') {
+      assert.equal(ops[1]!.folderName, 'Email');
+    }
+  });
+
+  it('uses existing folder id for override folder when available', () => {
+    const finding = makeFolderFinding({
+      item: makeItem({ id: 'item-1' }),
+      suggestedFolder: 'Banking',
+      existingFolderId: 'bank-folder-id',
+    });
+    const state = createPageState([finding]);
+    const next = setOverride(state, 0, 'Email');
+    const existingFolders = new Map([['email', 'email-folder-id']]);
+    const ops = pageStateToOps(next, existingFolders);
+    assert.equal(ops.length, 1);
+    assert.equal(ops[0]!.kind, 'assign_folder');
+    if (ops[0]!.kind === 'assign_folder') {
+      assert.equal(ops[0]!.folderId, 'email-folder-id');
+      assert.equal(ops[0]!.folderName, 'Email');
+    }
+  });
+
+  it('creates folder when override folder does not exist', () => {
+    const finding = makeFolderFinding({
+      item: makeItem({ id: 'item-1' }),
+      suggestedFolder: 'Banking',
+      existingFolderId: 'bank-folder-id',
+    });
+    const state = createPageState([finding]);
+    const next = setOverride(state, 0, 'NewFolder');
+    const ops = pageStateToOps(next, new Map());
+    assert.equal(ops.length, 2);
+    assert.equal(ops[0]!.kind, 'create_folder');
+    if (ops[0]!.kind === 'create_folder') {
+      assert.equal(ops[0]!.folderName, 'NewFolder');
+    }
+  });
+
+  it('deduplicates create_folder when multiple entries override to same folder', () => {
+    const findings = [
+      makeFolderFinding({ item: makeItem({ id: '1' }), suggestedFolder: 'Banking' }),
+      makeFolderFinding({ item: makeItem({ id: '2' }), suggestedFolder: 'Shopping' }),
+    ];
+    let state = createPageState(findings);
+    state = setOverride(state, 0, 'Email');
+    state = setOverride(state, 1, 'Email');
+    const ops = pageStateToOps(state, new Map());
+    const creates = ops.filter(o => o.kind === 'create_folder');
+    const assigns = ops.filter(o => o.kind === 'assign_folder');
+    assert.equal(creates.length, 1);
+    assert.equal(assigns.length, 2);
+  });
+
+  it('falls back to suggestedFolder when no override is set', () => {
+    const finding = makeFolderFinding({
+      item: makeItem({ id: 'item-1' }),
+      suggestedFolder: 'Banking',
+      existingFolderId: null,
+    });
+    let state = createPageState([finding]);
+    state = setDecision(state, 'accept');
+    const ops = pageStateToOps(state, new Map());
+    assert.equal(ops[1]!.kind, 'assign_folder');
+    if (ops[1]!.kind === 'assign_folder') {
+      assert.equal(ops[1]!.folderName, 'Banking');
     }
   });
 });

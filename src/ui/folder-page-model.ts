@@ -5,6 +5,7 @@ export type EntryDecision = 'pending' | 'accept' | 'skip' | 'delete';
 export interface FolderPageEntry {
   readonly finding: FolderFinding;
   decision: EntryDecision;
+  overrideFolder?: string;
 }
 
 export interface FolderPageState {
@@ -67,4 +68,15 @@ export function visibleWindow(state: FolderPageState): VisibleWindow {
     startIndex: start,
     endIndex: end,
   };
+}
+
+export function setOverride(
+  state: FolderPageState,
+  entryIndex: number,
+  folder: string,
+): FolderPageState {
+  const entries = state.entries.map((entry, i) =>
+    i === entryIndex ? { ...entry, decision: 'accept' as const, overrideFolder: folder } : entry,
+  );
+  return { ...state, entries };
 }

@@ -627,8 +627,8 @@ describe('analyzeItems', () => {
       assert.ok(weak.length > 0, 'password containing extra common substring should be flagged at zxcvbn_min_score: 4');
       if (weak[0]!.category === 'weak') {
         assert.ok(
-          weak[0].reasons.some((r) => r.includes('common password')),
-          'reasons should mention common password substring',
+          weak[0].reasons.some((r) => r.includes('personal info')),
+          'reasons should mention personal info (user dictionary match)',
         );
       }
     });
@@ -658,6 +658,62 @@ describe('analyzeItems', () => {
       const findings = analyzeItems(items, config);
       const weak = findings.filter((f) => f.category === 'weak');
       assert.equal(weak.length, 0, 'same password should score 4 (pass) when extra_common_passwords is empty');
+    });
+  });
+
+  describe('zxcvbn integration', () => {
+    it('flags Password1! which passes heuristic checks but is weak by dictionary analysis', () => {
+      const items = [
+        makeItem({
+          id: '1',
+          login: {
+            uris: [{ match: null, uri: 'https://a.com' }],
+            username: 'u',
+            password: 'Password1!',
+            totp: null,
+          },
+        }),
+      ];
+      const config = makeConfig({
+        strength: {
+          min_length: 8,
+          require_digit: true,
+          require_symbol: true,
+          min_character_classes: 2,
+          zxcvbn_min_score: 2,
+          extra_common_passwords: [],
+        },
+      });
+      const findings = analyzeItems(items, config);
+      const weak = findings.filter((f) => f.category === 'weak');
+      assert.ok(weak.length > 0, 'Password1! should be flagged by zxcvbn despite passing heuristic checks');
+      if (weak[0]!.category === 'weak') {
+        assert.equal(weak[0].score, 0, 'Password1! should score 0 under zxcvbn');
+      }
+    });
+
+    it('provides zxcvbn-style feedback strings in reasons', () => {
+      const items = [
+        makeItem({
+          id: '1',
+          login: {
+            uris: [{ match: null, uri: 'https://a.com' }],
+            username: 'u',
+            password: 'password',
+            totp: null,
+          },
+        }),
+      ];
+      const config = makeConfig();
+      const findings = analyzeItems(items, config);
+      const weak = findings.filter((f) => f.category === 'weak');
+      assert.ok(weak.length > 0);
+      if (weak[0]!.category === 'weak') {
+        assert.ok(
+          weak[0].reasons.some((r) => r.includes('common password')),
+          `zxcvbn feedback should mention common password, got: ${JSON.stringify(weak[0].reasons)}`,
+        );
+      }
     });
   });
 });
