@@ -52,6 +52,7 @@ export function collectOpsFromFindings(
 
     switch (finding.category) {
       case 'duplicates': {
+        // Non-interactive: deterministic keep-first. Interactive path (presentAllDuplicates) lets the user pick.
         const [, ...dupes] = finding.items;
         for (const dupe of dupes) {
           ops.push(makeDeleteItemOp(dupe.id, itemLabel(dupe)));
@@ -135,6 +136,9 @@ export async function interactiveReview(
 
   if (duplicates.length > 0) {
     const dupResult = await presentAllDuplicates(duplicates, prompt, opts.folderNamesById);
+    if (dupResult.cancelled) {
+      return { ops, reviewed, skipped: skipped + duplicates.length, cancelled: true };
+    }
     if (dupResult.skipped) {
       skipped += duplicates.length;
     } else {
@@ -212,7 +216,10 @@ async function handleFolderChoice(
   finding: Extract<Finding, { category: 'folders' }>,
   ctx: ReviewContext,
 ): Promise<FindingAction> {
-  if (ctx.enabledCategories.length === 0) return 'skip';
+  if (ctx.enabledCategories.length === 0) {
+    ctx.prompt.logInfo('No folder categories are enabled — skipping folder choice.');
+    return 'skip';
+  }
 
   const categories = ctx.enabledCategories.includes(finding.suggestedFolder)
     ? ctx.enabledCategories

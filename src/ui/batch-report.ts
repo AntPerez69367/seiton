@@ -31,6 +31,8 @@ export async function renderBatchReport(
   const viewed = new Set<FindingCategory>();
 
   while (true) {
+    if (viewed.size === categories.length) break;
+
     const options = [
       ...categories.map(c => ({
         value: c.key as FindingCategory | 'done',

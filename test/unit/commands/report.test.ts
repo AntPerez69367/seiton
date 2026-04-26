@@ -2,26 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatFindingsText, formatFindingsJson } from '../../../src/commands/report.js';
 import type { WeakFinding, MissingFinding, FolderFinding, DuplicateFinding, ReuseFinding } from '../../../src/lib/domain/finding.js';
-
-function makeFakeItem(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'item-1',
-    name: 'Test Item',
-    type: 1 as const,
-    organizationId: null,
-    folderId: null,
-    notes: null,
-    favorite: false,
-    login: {
-      uris: [{ match: null, uri: 'https://example.com' }],
-      username: 'user@example.com',
-      password: 'secret123',
-      totp: null,
-    },
-    revisionDate: '2024-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
+import { makeItem } from '../../helpers/make-item.js';
 
 describe('formatFindingsText', () => {
   it('returns clean message for empty findings', () => {
@@ -32,7 +13,7 @@ describe('formatFindingsText', () => {
   it('formats weak findings grouped under category header', () => {
     const finding: WeakFinding = {
       category: 'weak',
-      item: makeFakeItem(),
+      item: makeItem(),
       score: 1,
       reasons: ['too short'],
     };
@@ -45,7 +26,7 @@ describe('formatFindingsText', () => {
   it('formats missing findings grouped under category header', () => {
     const finding: MissingFinding = {
       category: 'missing',
-      item: makeFakeItem(),
+      item: makeItem(),
       missingFields: ['password'],
     };
     const output = formatFindingsText([finding]);
@@ -56,7 +37,7 @@ describe('formatFindingsText', () => {
   it('formats folder findings grouped under category header', () => {
     const finding: FolderFinding = {
       category: 'folders',
-      item: makeFakeItem(),
+      item: makeItem(),
       suggestedFolder: 'Banking & Finance',
       existingFolderId: null,
       matchReason: { matchedKeyword: 'bank', ruleSource: 'builtin' },
@@ -70,8 +51,8 @@ describe('formatFindingsText', () => {
     const finding: DuplicateFinding = {
       category: 'duplicates',
       items: [
-        makeFakeItem({ id: 'dup-1', name: 'Email A' }),
-        makeFakeItem({ id: 'dup-2', name: 'Email B' }),
+        makeItem({ id: 'dup-1', name: 'Email A' }),
+        makeItem({ id: 'dup-2', name: 'Email B' }),
       ],
       key: 'user@example.com:https://example.com',
     };
@@ -86,9 +67,9 @@ describe('formatFindingsText', () => {
     const finding: ReuseFinding = {
       category: 'reuse',
       items: [
-        makeFakeItem({ id: 'reuse-1', name: 'Gmail' }),
-        makeFakeItem({ id: 'reuse-2', name: 'GitHub' }),
-        makeFakeItem({ id: 'reuse-3', name: 'Twitter' }),
+        makeItem({ id: 'reuse-1', name: 'Gmail' }),
+        makeItem({ id: 'reuse-2', name: 'GitHub' }),
+        makeItem({ id: 'reuse-3', name: 'Twitter' }),
       ],
       passwordHash: 'abc123def456',
     };
@@ -104,23 +85,23 @@ describe('formatFindingsText', () => {
     const findings = [
       {
         category: 'missing' as const,
-        item: makeFakeItem({ id: 'missing-1' }),
+        item: makeItem({ id: 'missing-1' }),
         missingFields: ['password'],
       },
       {
         category: 'duplicates' as const,
-        items: [makeFakeItem({ id: 'dup-1' }), makeFakeItem({ id: 'dup-2' })],
+        items: [makeItem({ id: 'dup-1' }), makeItem({ id: 'dup-2' })],
         key: 'test@example.com:https://test.com',
       },
       {
         category: 'weak' as const,
-        item: makeFakeItem({ id: 'weak-1' }),
+        item: makeItem({ id: 'weak-1' }),
         score: 1,
         reasons: ['too short'],
       },
       {
         category: 'reuse' as const,
-        items: [makeFakeItem({ id: 'reuse-1' }), makeFakeItem({ id: 'reuse-2' })],
+        items: [makeItem({ id: 'reuse-1' }), makeItem({ id: 'reuse-2' })],
         passwordHash: 'hash123',
       },
     ];
@@ -146,7 +127,7 @@ describe('formatFindingsJson', () => {
   it('redacts passwords in JSON output', () => {
     const finding: WeakFinding = {
       category: 'weak',
-      item: makeFakeItem(),
+      item: makeItem({ login: { uris: [{ match: null, uri: 'https://example.com' }], username: 'user', password: 'secret123', totp: null } }),
       score: 1,
       reasons: ['too short'],
     };

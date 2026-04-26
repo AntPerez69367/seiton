@@ -21,7 +21,7 @@ function truncate(text: string, maxLen: number): string {
 }
 
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (Math.round(ms) < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
@@ -36,7 +36,7 @@ export function formatProgressMessage(progress: ApplyProgress): string {
 }
 
 export function formatApplySummary(timings: ApplyTimings, totalFailed: number): string {
-  const phases: ApplyProgress['phase'][] = ['create_folder', 'assign_folder', 'delete_item'];
+  const phases = Object.keys(PHASE_LABELS) as ApplyProgress['phase'][];
   const lines: string[] = [];
 
   for (const phase of phases) {

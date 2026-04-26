@@ -148,16 +148,18 @@ describe('renderBatchReport', () => {
     assert.ok(prompt.steps.some(m => m.includes('3 across 2 categories')));
   });
 
-  it('shows "viewed" hint on previously-viewed categories when select re-renders', async () => {
+  it('shows "viewed" hint on previously-viewed categories and auto-exits when all viewed', async () => {
     const findings: Finding[] = [
       { category: 'weak', item: makeItem({ id: '1' }), score: 1, reasons: ['short'] },
       { category: 'missing', item: makeItem({ id: '2' }), missingFields: ['password'] },
     ];
-    const prompt = makeCapturingPrompt(['weak', 'missing', 'done']);
+    const prompt = makeCapturingPrompt(['weak', 'missing']);
     await renderBatchReport(findings, prompt, '•');
 
+    // Auto-exits after all categories viewed — only 2 select calls
+    assert.equal(prompt.selectCallOptions.length, 2);
+
     // First select call (before viewing any category)
-    assert.equal(prompt.selectCallOptions.length, 3);
     const firstSelectOptions = prompt.selectCallOptions[0]!;
     const weakOptionInFirstSelect = firstSelectOptions.find(o => o.value === 'weak');
     const missingOptionInFirstSelect = firstSelectOptions.find(o => o.value === 'missing');
@@ -170,12 +172,5 @@ describe('renderBatchReport', () => {
     const missingOptionInSecondSelect = secondSelectOptions.find(o => o.value === 'missing');
     assert.equal(weakOptionInSecondSelect?.hint, 'viewed', 'weak category should have "viewed" hint after being selected');
     assert.equal(missingOptionInSecondSelect?.hint, undefined, 'missing category should not have hint yet');
-
-    // Third select call (after viewing both weak and missing)
-    const thirdSelectOptions = prompt.selectCallOptions[2]!;
-    const weakOptionInThirdSelect = thirdSelectOptions.find(o => o.value === 'weak');
-    const missingOptionInThirdSelect = thirdSelectOptions.find(o => o.value === 'missing');
-    assert.equal(weakOptionInThirdSelect?.hint, 'viewed', 'weak category should still have "viewed" hint');
-    assert.equal(missingOptionInThirdSelect?.hint, 'viewed', 'missing category should now have "viewed" hint');
   });
 });

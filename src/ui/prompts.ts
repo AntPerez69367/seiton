@@ -176,6 +176,9 @@ function createPlainAdapter(): PromptAdapter {
               resolve(ans);
             });
           });
+          if (answer.trim() === '' && initialValues && initialValues.length > 0) {
+            return [...initialValues];
+          }
           const indices = answer.split(',').map(s => parseInt(s.trim(), 10) - 1);
           const results: T[] = [];
           for (const idx of indices) {
