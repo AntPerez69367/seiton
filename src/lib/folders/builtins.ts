@@ -1,7 +1,6 @@
-export type BuiltinRule = {
-  readonly folder: string;
-  readonly keywords: readonly string[];
-};
+import type { BuiltinRule } from './types.js';
+
+export type { BuiltinRule } from './types.js';
 
 export const BUILTIN_RULES: readonly BuiltinRule[] = [
   {
@@ -95,6 +94,5 @@ for (const rule of BUILTIN_RULES) {
 export {
   classifyItem,
   builtinFolderForKeyword,
-  type CustomRuleEntry,
-  type ClassifyResult,
 } from './classify.js';
+export type { CustomRuleEntry, ClassifyResult } from './types.js';

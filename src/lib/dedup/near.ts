@@ -1,11 +1,9 @@
 import { distance } from 'fastest-levenshtein';
 import type { BwItem } from '../domain/types.js';
 import { ItemType } from '../domain/types.js';
+import type { NearDuplicateGroup } from './types.js';
 
-export interface NearDuplicateGroup {
-  readonly items: readonly BwItem[];
-  readonly maxDistance: number;
-}
+export type { NearDuplicateGroup } from './types.js';
 
 export function findNearDuplicateGroups(
   items: readonly BwItem[],

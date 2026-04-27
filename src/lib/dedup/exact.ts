@@ -2,12 +2,9 @@ import type { BwItem } from '../domain/types.js';
 import type { Finding } from '../domain/finding.js';
 import { makeDuplicateFinding } from '../domain/finding.js';
 import { dedupKey, dedupKeyMulti } from './key.js';
+import type { DedupConfig } from './types.js';
 
-export type DedupConfig = {
-  readonly treat_www_as_same_domain: boolean;
-  readonly case_insensitive_usernames: boolean;
-  readonly compare_only_primary_uri: boolean;
-};
+export type { DedupConfig } from './types.js';
 
 export function findExactDuplicates(
   items: readonly BwItem[],

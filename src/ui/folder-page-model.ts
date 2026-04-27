@@ -4,7 +4,7 @@ export type EntryDecision = 'pending' | 'accept' | 'skip' | 'delete';
 
 export interface FolderPageEntry {
   readonly finding: FolderFinding;
-  decision: EntryDecision;
+  readonly decision: EntryDecision;
   overrideFolder?: string;
 }
 

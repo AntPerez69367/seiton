@@ -10,36 +10,13 @@ import {
 import { findNearDuplicateGroups } from '../dedup/near.js';
 import { findExactDuplicates } from '../dedup/exact.js';
 import { findReusedPasswords } from '../strength/reuse.js';
-import { scorePassword, collectWeaknesses, type StrengthConfig } from '../strength/heuristic.js';
-import { zxcvbnScore, type ZxcvbnScoreResult } from '../strength/zxcvbn.js';
-import { classifyItem, type CustomRuleEntry } from '../folders/classify.js';
+import { scorePassword, collectWeaknesses } from '../strength/heuristic.js';
+import type { StrengthConfig } from '../strength/types.js';
+import { zxcvbnScore } from '../strength/zxcvbn.js';
+import { classifyItem } from '../folders/classify.js';
+import type { Scorer, AnalysisConfig } from './types.js';
 
-export type Scorer = (
-  password: string,
-  userDictionary: readonly string[],
-) => ZxcvbnScoreResult;
-
-export interface AnalysisConfig {
-  readonly strength: {
-    readonly min_length: number;
-    readonly require_digit: boolean;
-    readonly require_symbol: boolean;
-    readonly min_character_classes: number;
-    readonly zxcvbn_min_score: number;
-    readonly extra_common_passwords: readonly string[];
-  };
-  readonly dedup: {
-    readonly name_similarity_threshold: number;
-    readonly treat_www_as_same_domain: boolean;
-    readonly case_insensitive_usernames: boolean;
-    readonly compare_only_primary_uri: boolean;
-  };
-  readonly folders: {
-    readonly preserve_existing: boolean;
-    readonly enabled_categories: readonly string[];
-    readonly custom_rules: readonly CustomRuleEntry[];
-  };
-}
+export type { Scorer, AnalysisConfig } from './types.js';
 
 export function analyzeItems(
   items: readonly BwItem[],
@@ -64,6 +41,7 @@ function probeScorer(fn: Scorer): boolean {
     fn('probe', []);
     return true;
   } catch {
+    // zxcvbn-fallback: deliberate recovery — probe must swallow load errors
     return false;
   }
 }

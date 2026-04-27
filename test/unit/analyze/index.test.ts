@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeItems, type AnalysisConfig } from '../../../src/lib/analyze/index.js';
+import { analyzeItems } from '../../../src/lib/analyze/index.js';
+import type { AnalysisConfig } from '../../../src/lib/analyze/types.js';
 import { makeItem } from '../../helpers/make-item.js';
 
 function makeConfig(overrides?: Partial<AnalysisConfig>): AnalysisConfig {

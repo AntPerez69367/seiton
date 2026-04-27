@@ -1,6 +1,6 @@
 import { readConfigFile, writeConfigFile, type WriteConfigResult } from './io.js';
 import type { Logger } from '../adapters/logging.js';
-import type { CustomRuleEntry } from '../lib/folders/classify.js';
+import type { CustomRuleEntry } from '../lib/folders/types.js';
 
 export type { CustomRuleEntry };
 

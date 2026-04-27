@@ -13,10 +13,9 @@ const zxcvbn: ZxcvbnFn =
     ? zxcvbnDefault
     : ((zxcvbnDefault as Record<string, unknown>).zxcvbn as ZxcvbnFn);
 
-export type ZxcvbnScoreResult = {
-  readonly score: number;
-  readonly feedback: readonly string[];
-};
+import type { ZxcvbnScoreResult } from './types.js';
+
+export type { ZxcvbnScoreResult } from './types.js';
 
 export function zxcvbnScore(
   password: string,

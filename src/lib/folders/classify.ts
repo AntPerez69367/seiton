@@ -1,15 +1,7 @@
 import { BUILTIN_RULES, BUILTIN_FOLDER_INDEX } from './builtins.js';
+import type { CustomRuleEntry, ClassifyResult } from './types.js';
 
-export type CustomRuleEntry = {
-  readonly folder: string;
-  readonly keywords: readonly string[];
-};
-
-export type ClassifyResult = {
-  readonly folder: string;
-  readonly matchedKeyword: string;
-  readonly ruleSource: 'builtin' | 'custom';
-};
+export type { CustomRuleEntry, ClassifyResult } from './types.js';
 
 function isWordChar(ch: string): boolean {
   return /[a-z0-9]/.test(ch);

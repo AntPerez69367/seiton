@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { findExactDuplicates, type DedupConfig } from '../../../src/lib/dedup/exact.js';
+import { findExactDuplicates } from '../../../src/lib/dedup/exact.js';
+import type { DedupConfig } from '../../../src/lib/dedup/types.js';
 import { makeItem } from '../../helpers/make-item.js';
 
 const DEFAULT_CONFIG: DedupConfig = {

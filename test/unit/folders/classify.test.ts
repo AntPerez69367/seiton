@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {
   classifyItem,
   builtinFolderForKeyword,
-  type CustomRuleEntry,
 } from '../../../src/lib/folders/classify.js';
+import type { CustomRuleEntry } from '../../../src/lib/folders/types.js';
 import { BUILTIN_RULES } from '../../../src/lib/folders/builtins.js';
 
 const ALL_CATEGORIES = BUILTIN_RULES.map((r) => r.folder);
