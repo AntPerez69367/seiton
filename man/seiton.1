@@ -1,0 +1,155 @@
+.TH SEITON 1 "2026-04-27" "seiton 0.3.0" "User Commands"
+.
+.SH NAME
+seiton \- interactive Bitwarden vault auditor
+.
+.SH SYNOPSIS
+.B seiton
+[\fIcommand\fR] [\fIflags\fR]
+.
+.SH DESCRIPTION
+.B seiton
+detects duplicates, weak and reused passwords, missing fields, and
+disorganized folders in a Bitwarden vault, then walks the user through
+each finding for interactive review. Plaintext never leaves the local
+machine. All vault mutations flow through the
+.B bw
+CLI with per\-item confirmation.
+.
+.SH COMMANDS
+.TP
+.B audit
+Fetch, analyze, review findings, apply approved changes (default).
+.TP
+.B resume
+Resume a previously interrupted audit session.
+.TP
+.B discard
+Delete the saved pending\-ops queue.
+.TP
+.B report
+Read\-only analysis. Supports \fB\-\-json\fR output.
+.TP
+.B doctor
+Preflight checks for bw, session, and config.
+.TP
+.B config show
+Display the full resolved configuration.
+.TP
+.B config get \fIkey\fR
+Get a specific configuration value.
+.TP
+.B config set \fIkey\fR \fIvalue\fR
+Set a configuration value.
+.TP
+.B config path
+Print the active config file path.
+.TP
+.B config edit
+Open the config file in $VISUAL/$EDITOR.
+.TP
+.B config reset
+Reset config to defaults.
+.
+.SH OPTIONS
+.TP
+.B \-\-config \fIpath\fR
+Override the config file location.
+.TP
+.B \-\-dry\-run
+Print planned actions without performing them.
+.TP
+.B \-\-json
+Output findings in JSON format (report only).
+.TP
+.B \-\-no\-color
+Disable ANSI color output.
+.TP
+.B \-\-verbose, \-v
+Increase log detail (\-vv for trace).
+.TP
+.B \-\-quiet, \-q
+Suppress non\-essential output.
+.TP
+.B \-\-skip \fIcategory\fR
+Skip a finding category (repeatable).
+.TP
+.B \-\-limit \fIn\fR
+Stop after n findings per category.
+.TP
+.B \-\-help, \-h
+Print help and exit.
+.TP
+.B \-\-version, \-V
+Print version and exit.
+.
+.SH EXIT STATUS
+.TP
+.B 0
+Command completed successfully.
+.TP
+.B 1
+General error (apply failures, fetch failures).
+.TP
+.B 2
+Internal/unexpected error.
+.TP
+.B 3
+Failed to parse bw CLI output.
+.TP
+.B 64
+Invalid arguments, unknown command, or non-interactive terminal.
+.TP
+.B 69
+bw CLI not available on PATH.
+.TP
+.B 73
+Cannot create file or directory.
+.TP
+.B 77
+Vault locked or BW_SESSION not set.
+.TP
+.B 130
+User interrupt (SIGINT). Pending ops saved if enabled.
+.
+.SH ENVIRONMENT
+.TP
+.B BW_SESSION
+Bitwarden session token. Required for audit, resume, and report.
+.TP
+.B SEITON_CONFIG
+Alternate config file path.
+.TP
+.B SEITON_VERBOSE
+Set to 1 or 2 for verbose/trace output.
+.TP
+.B NO_COLOR
+Disable ANSI color output when set to any value.
+.TP
+.B CI
+Simulates CI behavior (plain output, quiet by default).
+.TP
+.B VISUAL
+Editor used by config edit (takes precedence over EDITOR).
+.TP
+.B EDITOR
+Fallback editor used by config edit.
+.
+.SH FILES
+.TP
+.I $XDG_CONFIG_HOME/seiton/config.json
+User configuration file (mode 0600).
+.TP
+.I $XDG_STATE_HOME/seiton/pending.json
+Pending operations queue (mode 0600). Created on SIGINT during audit.
+.TP
+.I $HOME/.config/seiton/config.json
+Fallback config location when XDG_CONFIG_HOME is not set.
+.TP
+.I $HOME/.seitonrc.json
+Legacy config file location (lowest priority).
+.
+.SH SEE ALSO
+.BR bw (1)
+.PP
+Project homepage: https://github.com/AntPerez69367/seiton
