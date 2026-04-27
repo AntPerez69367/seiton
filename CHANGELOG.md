@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [MILESTONE 24 ✓] feat: implement milestone 24 (M25)
+- Created `scripts/check-layering.ts`: a static import-direction checker that enforces the five layering zones from CLAUDE.md lines 65-72 (pure-lib, bw.ts, pending.ts, config, commands). Uses regex-based import parsing and a declarative denied-import matrix. Exits 0 on clean, 1 with violations printed to stderr in `file:line: description` format. (M26)
 ## [0.3.18] - 2026-04-26
 
 ### Added
