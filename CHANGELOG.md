@@ -6,11 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.3.22] - 2026-04-27
+
+### Added
+- **Step 1:** Extended `ApplyTimings` with `cacheHits: number` and `cacheMisses: number` fields, initialized to zero. (M29)
+
+## [0.3.21] - 2026-04-27
+
+### Added
+- Created `src/report/schema.ts`: zod schema for the `report --json` output structure (version 1), matching the shape produced by `formatFindingsJson` in `src/commands/report.ts`. Includes `RedactedItemSchema`, discriminated union `ReportFindingSchema`, and top-level `ReportSchema`. (M28)
+## [0.3.20] - 2026-04-27
+
+### Added
+- Created `scripts/gen-help-docs.ts`: spawns the CLI with `--help` for each subcommand, writes Markdown docs to `docs/commands/<cmd>.md` and plain-text snapshots to `test/fixtures/help/<cmd>.txt`. (M27)
 
 ## [0.3.19] - 2026-04-26
 
 ### Added
 - [MILESTONE 24 ✓] feat: implement milestone 24 (M25)
+- Created `scripts/check-layering.ts`: a static import-direction checker that enforces the five layering zones from CLAUDE.md lines 65-72 (pure-lib, bw.ts, pending.ts, config, commands). Uses regex-based import parsing and a declarative denied-import matrix. Exits 0 on clean, 1 with violations printed to stderr in `file:line: description` format. (M26)
 ## [0.3.18] - 2026-04-26
 
 ### Added

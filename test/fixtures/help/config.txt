@@ -1,0 +1,24 @@
+seiton config — get, set, edit, reset configuration
+
+Usage: seiton config <subcommand> [flags]
+
+Subcommands:
+  show              Display the full resolved configuration
+  get <key>         Get a specific configuration value
+  set <key> <value> Set a configuration value
+  set <key> --unset Remove a configuration key
+  path              Print the active config file path
+  edit              Open the config file in $VISUAL/$EDITOR
+  reset             Reset config to defaults
+
+Flags:
+  --config <path>      Override the config file location
+  --keep-custom-rules  Preserve custom_rules during reset
+  --yes                Skip confirmation for reset
+  --verbose, -v        Increase log detail
+  --quiet, -q          Suppress non-essential output
+  --help, -h           Print this help and exit
+
+Exit Codes:
+  0   Success
+  64  Invalid arguments or unknown subcommand

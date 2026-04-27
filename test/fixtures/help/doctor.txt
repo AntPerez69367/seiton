@@ -1,0 +1,22 @@
+seiton doctor — preflight checks for bw, session, and config
+
+Usage: seiton doctor [flags]
+
+Checks:
+  • bw CLI is on PATH and reports its version
+  • BW_SESSION environment variable is set (unlock status is not probed)
+  • Node.js version meets the minimum requirement (>=22)
+  • Config file is valid (if present)
+
+Flags:
+  --debug         Show stack traces on unexpected error
+  --config <path> Override the config file location
+  --no-color      Disable ANSI color output
+  --verbose, -v   Increase log detail
+  --quiet, -q     Suppress non-essential output
+  --help, -h      Print this help and exit
+
+Exit Codes:
+  0   All checks passed
+  1   One or more checks failed
+  2   Internal error
