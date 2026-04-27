@@ -1,11 +1,19 @@
 {
-  "name": "seiton",
+  "name": "@bigantlabs/seiton",
   "version": "0.3.0",
   "description": "Interactive command-line auditor for Bitwarden vaults",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigantlabs/seiton.git"
+  },
+  "homepage": "https://github.com/bigantlabs/seiton#readme",
+  "bugs": {
+    "url": "https://github.com/bigantlabs/seiton/issues"
+  },
   "bin": {
-    "seiton": "./dist/bw-organize.js"
+    "seiton": "dist/bw-organize.js"
   },
   "files": [
     "dist/",
