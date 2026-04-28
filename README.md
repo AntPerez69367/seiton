@@ -1,5 +1,14 @@
 # seiton
 
+[![npm version](https://img.shields.io/npm/v/@bigantlabs/seiton?logo=npm&style=flat-square)](https://www.npmjs.com/package/@bigantlabs/seiton)
+[![npm downloads](https://img.shields.io/npm/dm/@bigantlabs/seiton?style=flat-square)](https://www.npmjs.com/package/@bigantlabs/seiton)
+[![CI](https://github.com/bigantlabs/seiton/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bigantlabs/seiton/actions/workflows/ci.yml)
+[![License](https://img.shields.io/npm/l/@bigantlabs/seiton?style=flat-square)](LICENSE)
+[![Node.js Version](https://img.shields.io/node/v/@bigantlabs/seiton?logo=node.js&logoColor=white&style=flat-square)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/npm/types/@bigantlabs/seiton?logo=typescript&style=flat-square)](https://www.typescriptlang.org/)
+[![Last commit](https://img.shields.io/github/last-commit/bigantlabs/seiton?logo=github&style=flat-square)](https://github.com/bigantlabs/seiton/commits/main)
+[![Stars](https://img.shields.io/github/stars/bigantlabs/seiton?logo=github&style=flat-square)](https://github.com/bigantlabs/seiton/stargazers)
+
 An interactive command-line auditor for [Bitwarden](https://bitwarden.com/) vaults. seiton detects duplicates, weak and reused passwords, missing fields, and disorganized folders, then walks you through each finding so you can approve or reject changes one at a time. Plaintext never leaves the local machine: seiton itself makes no direct network calls, telemetry, or update checks — any network access is performed by the `bw` CLI it invokes — and every mutation flows through `bw` with per-item confirmation.
 
 The name derives from Japanese 整頓 ("set in order"), one of the five principles of the 5S workplace-organization methodology.
