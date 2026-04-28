@@ -1,11 +1,5 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
 ## [0.3.24] - 2026-04-27
 
 ### Added
@@ -21,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DEPENDENCIES.md` updated to list `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common`, and `@zxcvbn-ts/language-en` as the corrected runtime dependencies (all under the official `@zxcvbn-ts/*` scope).
 - `test-integration` CI job now installs `@bitwarden/cli` before running integration tests, fixing a regression where `seiton doctor` exited non-zero in CI because `bw` was not on PATH.
 
+- Milestone 33: Changelog Migration Cleanup — completed the keep-a-changelog to changesets transition by removing legacy artifacts and updating contributor documentation. (M33)
 ## [0.3.23] - 2026-04-27
 
 ### Changed
