@@ -14,6 +14,8 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CHANGESETS_PAT }}
 
       - uses: actions/setup-node@v4
         with:
@@ -27,4 +29,4 @@ jobs:
           version: npm run changeset:version
           publish: node --import tsx scripts/tag-release.ts
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.CHANGESETS_PAT }}
