@@ -21,6 +21,9 @@ import { join } from 'node:path';
 
 const root = ${JSON.stringify(projectRoot)};
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+if (typeof pkg.version !== 'string' || pkg.version.length === 0) {
+  throw new Error('package.json is missing a valid "version" field');
+}
 const version = pkg.version;
 
 writeFileSync(join(root, 'src', 'version.ts'), \`export const VERSION = "\${version}";\n\`);
@@ -100,18 +103,18 @@ describe('sync-version script', () => {
 		);
 	});
 
-	it('writes "undefined" when package.json has no version field', () => {
+	it('throws when package.json has no version field', () => {
 		tempDir = mkdtempSync(join(tmpdir(), 'seiton-sync-version-'));
 		writeFileSync(join(tempDir, 'package.json'), JSON.stringify({ name: 'no-version' }));
 		mkdirSync(join(tempDir, 'src'), { recursive: true });
 
-		runSyncVersion(tempDir);
-
-		const versionTs = readFileSync(join(tempDir, 'src', 'version.ts'), 'utf8');
-		assert.equal(versionTs, 'export const VERSION = "undefined";\n');
-
-		const versionFile = readFileSync(join(tempDir, 'VERSION'), 'utf8');
-		assert.equal(versionFile, 'undefined\n');
+		assert.throws(
+			() => runSyncVersion(tempDir),
+			(err: unknown) => {
+				assert.ok(err instanceof Error);
+				return true;
+			},
+		);
 	});
 
 	it('syncs the actual project files when run via tsx', () => {

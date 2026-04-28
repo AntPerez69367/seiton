@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved to bigantlabs org
 
 - Milestone 30: `bw serve` HTTP Backend for Near-Instant Operations. (M30)
+- Milestone 32: Changesets CI Integration — wired `changesets/action@v1` into GitHub Actions, replaced changelog enforcement with changeset-presence checks, updated release note extraction for dual-format headings, and fixed a prior bug in sync-version.ts. (M32)
 ## [0.3.22] - 2026-04-27
 
 ### Added
