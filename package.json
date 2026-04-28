@@ -36,9 +36,14 @@
 		"test:coverage": "node --experimental-test-coverage --test-coverage-include='src/**/*.ts' --test-coverage-exclude='test/**' --import tsx --test 'test/unit/**/*.test.ts'",
 		"gen:docs": "node --import tsx scripts/gen-schemas.ts && node --import tsx scripts/gen-help-docs.ts && node --import tsx scripts/gen-man.ts",
 		"lint:layering": "node --import tsx scripts/check-layering.ts",
-		"check:stability": "node --import tsx scripts/check-stability.ts"
+		"check:stability": "node --import tsx scripts/check-stability.ts",
+		"changeset": "changeset",
+		"changeset:version": "changeset version && node --import tsx scripts/sync-version.ts",
+		"changeset:publish": "changeset publish"
 	},
 	"devDependencies": {
+		"@changesets/changelog-github": "^0.6.0",
+		"@changesets/cli": "^2.31.0",
 		"@types/node": "^22.0.0",
 		"tsx": "^4.19.0",
 		"typescript": "^5.7.0"

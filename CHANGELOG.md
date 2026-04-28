@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.3.24] - 2026-04-27
+
+### Added
+- Milestone 31: Changesets Bootstrap — installed `@changesets/cli` and `@changesets/changelog-github`, created the `.changeset/` configuration directory, added a version-sync script, and wired npm convenience scripts. (M31)
 
 ### Added
 - **`bw serve` HTTP backend** — opt-in `bw_serve` config section (`enabled`, `port`, `startup_timeout_ms`) enables using `bw serve` as a local REST API for vault operations, eliminating per-call subprocess startup overhead. Falls back to the CLI adapter when serve is unavailable. (M30)
