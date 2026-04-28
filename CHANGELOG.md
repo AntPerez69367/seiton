@@ -7,11 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`bw serve` HTTP backend** — opt-in `bw_serve` config section (`enabled`, `port`, `startup_timeout_ms`) enables using `bw serve` as a local REST API for vault operations, eliminating per-call subprocess startup overhead. Falls back to the CLI adapter when serve is unavailable. (M30)
+
+### Security
+- **Replaced `zxcvbn-ts@^2.0.2` with `@zxcvbn-ts/core@^3.0.4` + `@zxcvbn-ts/language-common@^3.0.4`.** The previously-installed `zxcvbn-ts` was an unrelated third-party package (author: "Kunal Tanwar") that holds the unscoped name on npm; it is not the official zxcvbn TypeScript port. The legitimate port lives under the `@zxcvbn-ts/*` scope (the same scope that ships `@zxcvbn-ts/language-en`, which this project was already using). No malicious behavior was identified in the squatted package, but for a credential-auditing tool this constitutes a supply-chain near-miss and is corrected here. `src/lib/strength/zxcvbn.ts` was rewritten to use the official package's API (`zxcvbn`, `zxcvbnOptions.setOptions`).
+
+### Changed
+- `DEPENDENCIES.md` updated to list `@zxcvbn-ts/core`, `@zxcvbn-ts/language-common`, and `@zxcvbn-ts/language-en` as the corrected runtime dependencies (all under the official `@zxcvbn-ts/*` scope).
+- `test-integration` CI job now installs `@bitwarden/cli` before running integration tests, fixing a regression where `seiton doctor` exited non-zero in CI because `bw` was not on PATH.
+
 ## [0.3.23] - 2026-04-27
 
 ### Changed
 - Moved to bigantlabs org
 
+- Milestone 30: `bw serve` HTTP Backend for Near-Instant Operations. (M30)
 ## [0.3.22] - 2026-04-27
 
 ### Added
